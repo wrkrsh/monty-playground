@@ -1,94 +1,70 @@
-# 🐍 Monty Playground
+# Monty Playground 🐍
 
-**Try [Monty](https://github.com/pydantic/monty) in your browser — no installation required.**
+Interactive playground for [pydantic-monty](https://github.com/pydantic/monty) - a minimal, secure Python interpreter written in Rust for AI agents.
 
-**[→ Launch Playground](https://wrkrsh.github.io/monty-playground/)**
+## Features
 
----
+- **Real WASM execution** - Uses @pydantic/monty compiled to WebAssembly
+- **Monaco editor** - Full Python syntax highlighting
+- **External functions** - Simulate host-provided functions
+- **Share code** - Copy shareable links
 
-## What is Monty?
+## Deployment
 
-**Monty** is a minimal, secure Python interpreter written in Rust, created by the [Pydantic](https://pydantic.dev) team (the folks behind [Pydantic](https://github.com/pydantic/pydantic), [FastAPI](https://fastapi.tiangolo.com/), and [Pydantic AI](https://github.com/pydantic/pydantic-ai)).
+This playground requires specific security headers to enable SharedArrayBuffer for WASM threads.
 
-It's designed for one specific use case: **safely running code written by AI agents**.
+### Cloudflare Pages (Recommended)
 
-### Why Monty exists
+1. Fork this repo
+2. Connect to Cloudflare Pages
+3. Build command: (leave empty)
+4. Output directory: `/`
+5. The `_headers` file automatically configures COOP/COEP
 
-When LLMs write code to accomplish tasks, you need to run that code somewhere. Your options:
+### Vercel
 
-| Approach | Problem |
-|----------|---------|
-| Docker/containers | Slow startup (100-200ms), complex setup |
-| Pyodide/WASM | Slow cold start (2-3s), no real sandboxing |
-| `exec()` directly | Zero security, full system access |
-| Sandbox services | Network latency, costs money |
+Create `vercel.json`:
+```json
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    }
+  ]
+}
+```
 
-**Monty's approach:**
-- ⚡ **Microsecond startup** — not hundreds of milliseconds
-- 🔒 **True sandboxing** — no filesystem, network, or env access unless explicitly allowed
-- 🔌 **External functions** — you control exactly what the code can do
-- 📸 **Snapshot & resume** — pause execution, serialize state, resume later (killer feature for agents)
+### Self-hosted (nginx)
 
-### What Monty can do
+```nginx
+location / {
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header Cross-Origin-Embedder-Policy "require-corp" always;
+}
+```
 
-- Run a useful subset of Python (functions, loops, comprehensions, async/await)
-- Call host-defined external functions
-- Type check code with [ty](https://docs.astral.sh/ty/)
-- Serialize interpreter state mid-execution
-- Run from Python, JavaScript/TypeScript, or Rust
+### Why GitHub Pages doesn't work
 
-### What Monty can't do (yet)
+GitHub Pages doesn't support custom HTTP headers. The WASM module requires SharedArrayBuffer which is only available in cross-origin isolated contexts.
 
-- Classes (coming soon)
-- `*args`/`**kwargs` unpacking
-- Standard library imports (except `asyncio`, `typing`, `sys`)
-- Third-party packages
+## Setup WASM
 
----
+The WASM binary is not included in the repo (10MB). To set up locally:
 
-## This Playground
+```bash
+./setup-wasm.sh
+```
 
-This playground lets you experiment with Monty's features interactively:
+Or manually:
+```bash
+npm install
+# Downloads @pydantic/monty-wasm32-wasi and copies files to /wasm
+```
 
-| Example | What it shows |
-|---------|---------------|
-| **Hello World** | Basic syntax, variables, f-strings |
-| **Fibonacci** | Recursion and type hints |
-| **Async/Await** | Async code patterns |
-| **External Functions** | How Monty calls host functions |
-| **Type Checking** | Static type validation |
-| **Snapshot & Resume** | Monty's killer feature for agents |
-| **Limitations** | What doesn't work yet |
+## License
 
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Enter` | Run code |
-
-### Share Code
-
-Click **Share** to copy a URL with your code embedded.
-
----
-
-## Note on Execution
-
-This playground uses **simulated** execution for demonstration purposes. The real Monty interpreter runs as a native binary or WASM module.
-
-For actual Monty execution, use:
-- **Python:** `pip install pydantic-monty` ([PyPI](https://pypi.org/project/pydantic-monty/))
-- **JavaScript:** `npm install @pydantic/monty` ([npm](https://www.npmjs.com/package/@pydantic/monty))
-- **Rust:** [crates.io/crates/monty](https://crates.io/crates/monty)
-
----
-
-## Links
-
-- [Monty GitHub](https://github.com/pydantic/monty) — source code & docs
-- [Pydantic AI](https://github.com/pydantic/pydantic-ai) — AI agent framework using Monty
-- [Pydantic](https://pydantic.dev) — the team behind Monty
-
----
-
-Built by [wrkr](https://wrkr.sh) • [Playground source](https://github.com/wrkrsh/monty-playground) • [Report issues](https://github.com/wrkrsh/monty-playground/issues)
+MIT

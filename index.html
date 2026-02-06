@@ -3,343 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monty Playground — Try Python in Your Browser</title>
-    <meta name="description" content="Try pydantic-monty in your browser. A minimal, secure Python interpreter written in Rust for AI agents. No installation required.">
+    <title>Monty Playground — Python in WebAssembly</title>
+    <meta name="description" content="Try pydantic-monty in your browser. A minimal, secure Python interpreter for AI agents.">
     
-    <!-- Open Graph -->
     <meta property="og:title" content="Monty Playground">
-    <meta property="og:description" content="Try pydantic-monty in your browser. A minimal, secure Python interpreter for AI agents.">
-    <meta property="og:image" content="https://wrkrsh.github.io/monty-playground/og-image.png">
+    <meta property="og:description" content="Try pydantic-monty in your browser.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://wrkrsh.github.io/monty-playground">
     
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Monty Playground">
-    <meta name="twitter:description" content="Try pydantic-monty in your browser. No installation required.">
-    
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
     
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=8">
-    
-    <!-- Monaco Editor -->
+    <link rel="stylesheet" href="css/style.css?v=10">
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 </head>
 <body>
-    <!-- Loading Overlay -->
     <div class="loading-overlay" id="loading">
         <div class="loading-content">
             <div class="loading-spinner"></div>
-            <div style="color: var(--text-muted); font-size: 13px;">Loading editor...</div>
+            <div style="color: #71717a; font-size: 13px;">Loading...</div>
         </div>
     </div>
 
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <a href="https://github.com/pydantic/monty" target="_blank" class="logo">
                 <span class="logo-icon">🐍</span>
                 <span class="logo-text">Monty Playground</span>
             </a>
-            <span class="badge">v0.0.3</span>
+            <span class="badge">WASM</span>
         </div>
         <div class="header-center">
             <select id="examples" onchange="loadExample(this.value)">
                 <option value="">Load example...</option>
-                <option value="hello">👋 Welcome</option>
+                <option value="hello">👋 Hello</option>
                 <option value="fibonacci">🔢 Fibonacci</option>
-                <option value="async">⚡ Async/Await</option>
                 <option value="external">🔌 External Functions</option>
-                <option value="types">📝 Type Checking</option>
-                <option value="snapshot">📸 Snapshot & Resume</option>
-                <option value="limitations">⚠️ Limitations</option>
+                <option value="types">📝 Types</option>
+                <option value="snapshot">📸 Snapshot</option>
             </select>
         </div>
         <div class="header-right">
-            <label class="toggle-label" title="Enable live type checking">
-                <input type="checkbox" id="typeCheckToggle" onchange="toggleTypeCheck()">
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">Types</span>
-            </label>
-            <button class="btn btn-ghost" onclick="shareCode()" title="Copy shareable link">
-                📤 Share
-            </button>
-            <a href="https://github.com/pydantic/monty" target="_blank" class="btn btn-ghost" title="Monty GitHub">
-                📖 Docs
-            </a>
-            <a href="https://github.com/wrkrsh/monty-playground" target="_blank" class="btn btn-ghost" title="Playground source">
-                ⭐ Star
-            </a>
-            <button class="btn btn-primary" onclick="runCode()" id="runBtn">
-                ▶ Run
-            </button>
-            <button class="btn btn-ghost" onclick="runWithSnapshots()" id="stepBtn" title="Run with snapshot visualization">
-                ⏯ Step
-            </button>
-            <button class="btn btn-ghost" onclick="runBenchmark()" id="benchBtn" title="Run performance benchmark">
-                ⏱️ Bench
-            </button>
-            <button class="btn btn-ghost" onclick="showAgentDemo()" title="See how AI agents use Monty">
-                🤖 Demo
-            </button>
+            <button class="btn btn-ghost" onclick="shareCode()">📤 Share</button>
+            <a href="https://github.com/pydantic/monty" target="_blank" class="btn btn-ghost">📖 Docs</a>
+            <button class="btn btn-primary" onclick="runCode()" id="runBtn">▶ Run</button>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="main">
-        <!-- Editor Panel -->
-        <div class="panel editor-panel">
-            <div class="tab-bar" id="tabBar">
-                <!-- Tabs populated dynamically -->
-            </div>
+        <div class="panel">
             <div class="panel-header">
-                <span id="currentFileName">main.py</span>
-                <span>Ctrl+Enter to run</span>
+                <span>main.py</span>
+                <span style="font-size: 11px;">Ctrl+Enter</span>
             </div>
             <div class="panel-content">
                 <div id="editor"></div>
             </div>
-            
-            <!-- External Functions Sidebar (collapsible) -->
-            <div class="external-sidebar" id="externalSidebar">
-                <div class="external-header" onclick="toggleExternalSidebar()">
-                    <span>🔌 External Functions</span>
-                    <span class="external-toggle" id="externalToggle">▼</span>
-                </div>
-                <div class="external-content" id="externalContent">
-                    <div class="external-list" id="externalList">
-                        <!-- Populated dynamically -->
-                    </div>
-                    <button class="btn btn-ghost external-add" onclick="addExternalFunction()">
-                        + Add Function
-                    </button>
-                </div>
-            </div>
         </div>
         
-        <!-- Output Panel -->
-        <div class="panel output-panel">
+        <div class="panel">
             <div class="panel-header">
                 <span>Output</span>
-                <button class="btn btn-ghost" onclick="clearOutput()" style="padding: 2px 8px; font-size: 11px;">Clear</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearOutput()">Clear</button>
             </div>
             <div class="panel-content">
                 <div class="output" id="output">
                     <div class="output-info">Click Run or press Ctrl+Enter</div>
                 </div>
             </div>
-            
-            <!-- Benchmark Panel (hidden by default) -->
-            <div class="benchmark-panel" id="benchmarkPanel" style="display: none;">
-                <div class="benchmark-header">
-                    <span>⚡ Performance Benchmark</span>
-                    <button class="btn btn-ghost btn-sm" onclick="closeBenchmark()">✕</button>
-                </div>
-                <div class="benchmark-content">
-                    <div class="benchmark-bars" id="benchmarkBars">
-                        <!-- Populated dynamically -->
-                    </div>
-                    <div class="benchmark-info">
-                        <small>* Reference values from typical workloads. Actual performance varies by code complexity.</small>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Type Checker Panel (hidden by default) -->
-            <div class="type-panel" id="typePanel" style="display: none;">
-                <div class="type-panel-header">
-                    <span>🔍 Type Checker</span>
-                    <span class="type-status" id="typeStatus">checking...</span>
-                </div>
-                <div class="type-panel-content" id="typeErrors">
-                    <div class="type-ok">✓ No type errors</div>
-                </div>
-            </div>
         </div>
     </main>
 
-    <!-- Agent Flow Demo Modal -->
-    <div class="agent-modal" id="agentModal" style="display: none;">
-        <div class="agent-modal-content">
-            <div class="agent-header">
-                <h2>🤖 How AI Agents Use Monty</h2>
-                <button class="btn btn-ghost" onclick="closeAgentDemo()">✕</button>
-            </div>
-            
-            <div class="agent-flow" id="agentFlow">
-                <div class="agent-step" data-step="1">
-                    <div class="agent-step-icon">📋</div>
-                    <div class="agent-step-content">
-                        <h4>1. Agent Receives Task</h4>
-                        <div class="agent-message user">
-                            "Find the weather in Amsterdam and summarize it"
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="2">
-                    <div class="agent-step-icon">💻</div>
-                    <div class="agent-step-content">
-                        <h4>2. Agent Writes Code</h4>
-                        <pre class="agent-code"><code>weather = get_weather("Amsterdam")
-summary = f"It's {weather['temp']}°C"
-return summary</code></pre>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="3">
-                    <div class="agent-step-icon">▶️</div>
-                    <div class="agent-step-content">
-                        <h4>3. Monty Starts Execution</h4>
-                        <div class="agent-console">Starting Python execution...</div>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="4">
-                    <div class="agent-step-icon">⏸️</div>
-                    <div class="agent-step-content">
-                        <h4>4. Pauses at External Call</h4>
-                        <div class="agent-snapshot-box">
-                            <code>get_weather("Amsterdam")</code>
-                            <div class="agent-snapshot-size">State serialized: 2,847 bytes → saved to DB</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="5">
-                    <div class="agent-step-icon">🌐</div>
-                    <div class="agent-step-content">
-                        <h4>5. Host Calls Real API</h4>
-                        <div class="agent-api">
-                            <span class="agent-api-method">GET</span>
-                            <span class="agent-api-url">api.weather.com/amsterdam</span>
-                            <div class="agent-api-response">→ {"temp": 12, "conditions": "Cloudy"}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="6">
-                    <div class="agent-step-icon">▶️</div>
-                    <div class="agent-step-content">
-                        <h4>6. Resume from Snapshot</h4>
-                        <div class="agent-console">
-                            Loading state from DB...<br>
-                            Resuming with return value...
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="agent-step" data-step="7">
-                    <div class="agent-step-icon">✅</div>
-                    <div class="agent-step-content">
-                        <h4>7. Execution Complete</h4>
-                        <div class="agent-message assistant">
-                            "It's 12°C and Cloudy in Amsterdam"
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="agent-footer">
-                <div class="agent-key-points">
-                    <div class="agent-key-point">
-                        <span class="agent-key-icon">🔒</span>
-                        <span>Sandboxed - no filesystem/network access</span>
-                    </div>
-                    <div class="agent-key-point">
-                        <span class="agent-key-icon">💾</span>
-                        <span>State serializes to bytes - store anywhere</span>
-                    </div>
-                    <div class="agent-key-point">
-                        <span class="agent-key-icon">⚡</span>
-                        <span>Microsecond execution - no cold starts</span>
-                    </div>
-                </div>
-                <div class="agent-controls">
-                    <button class="btn btn-ghost" onclick="resetAgentDemo()">↺ Reset</button>
-                    <button class="btn btn-primary" onclick="playAgentDemo()" id="agentPlayBtn">▶ Play Demo</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Snapshot Modal -->
-    <div class="snapshot-modal" id="snapshotModal" style="display: none;">
-        <div class="snapshot-modal-content">
-            <div class="snapshot-header">
-                <h3>⏸️ Execution Paused</h3>
-                <button class="btn btn-ghost" onclick="cancelSnapshot()">✕</button>
-            </div>
-            
-            <div class="snapshot-body">
-                <!-- Function Call -->
-                <div class="snapshot-section">
-                    <div class="snapshot-label">External Function Call</div>
-                    <div class="snapshot-call">
-                        <code id="snapshotFnName">fetch</code>(<code id="snapshotArgs">"..."</code>)
-                    </div>
-                </div>
-                
-                <!-- State Info -->
-                <div class="snapshot-section">
-                    <div class="snapshot-label">Serialized State</div>
-                    <div class="snapshot-state">
-                        <span class="snapshot-bytes" id="snapshotSize">0</span> bytes
-                        <button class="btn btn-ghost btn-sm" onclick="downloadSnapshot()">💾 Download .bin</button>
-                        <button class="btn btn-ghost btn-sm" onclick="copySnapshotBase64()">📋 Copy Base64</button>
-                    </div>
-                </div>
-                
-                <!-- Timeline -->
-                <div class="snapshot-section">
-                    <div class="snapshot-label">Execution Timeline</div>
-                    <div class="snapshot-timeline" id="snapshotTimeline">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-                
-                <!-- Return Value Input -->
-                <div class="snapshot-section">
-                    <div class="snapshot-label">Provide Return Value</div>
-                    <textarea id="snapshotReturn" class="snapshot-input" placeholder='{"data": [...]} or any JSON value'></textarea>
-                </div>
-            </div>
-            
-            <div class="snapshot-footer">
-                <button class="btn btn-ghost" onclick="resumeWithError()">⚠️ Raise Exception</button>
-                <button class="btn btn-primary" onclick="resumeExecution()">▶ Resume Execution</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Status Bar -->
     <footer class="status-bar">
         <div class="status-left">
-            <div class="status-item">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Ready</span>
-            </div>
-            <div class="status-item" id="execTime" style="display: none;">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Loading...</span>
+            <span id="execTime" style="display: none; margin-left: 12px;">
                 <span id="execTimeValue">0</span>ms
-            </div>
+            </span>
         </div>
         <div class="status-right">
             <a href="https://github.com/pydantic/monty" target="_blank">Monty</a>
-            <span style="margin: 0 8px; opacity: 0.3;">·</span>
+            <span style="opacity: 0.3; margin: 0 8px;">·</span>
             <a href="https://github.com/wrkrsh/monty-playground" target="_blank">Source</a>
-            <span style="margin: 0 8px; opacity: 0.3;">·</span>
-            <a href="https://wrkr.sh" target="_blank">wrkr</a>
         </div>
     </footer>
 
-    <!-- App Script -->
-    <script src="js/app.js?v=9">
+    <script src="js/app.js?v=10"></script>
 </body>
 </html>
