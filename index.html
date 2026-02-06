@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=7">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -85,6 +85,9 @@
             </button>
             <button class="btn btn-ghost" onclick="runBenchmark()" id="benchBtn" title="Run performance benchmark">
                 ⏱️ Bench
+            </button>
+            <button class="btn btn-ghost" onclick="showAgentDemo()" title="See how AI agents use Monty">
+                🤖 Demo
             </button>
         </div>
     </header>
@@ -159,6 +162,111 @@
         </div>
     </main>
 
+    <!-- Agent Flow Demo Modal -->
+    <div class="agent-modal" id="agentModal" style="display: none;">
+        <div class="agent-modal-content">
+            <div class="agent-header">
+                <h2>🤖 How AI Agents Use Monty</h2>
+                <button class="btn btn-ghost" onclick="closeAgentDemo()">✕</button>
+            </div>
+            
+            <div class="agent-flow" id="agentFlow">
+                <div class="agent-step" data-step="1">
+                    <div class="agent-step-icon">📋</div>
+                    <div class="agent-step-content">
+                        <h4>1. Agent Receives Task</h4>
+                        <div class="agent-message user">
+                            "Find the weather in Amsterdam and summarize it"
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="2">
+                    <div class="agent-step-icon">💻</div>
+                    <div class="agent-step-content">
+                        <h4>2. Agent Writes Code</h4>
+                        <pre class="agent-code"><code>weather = get_weather("Amsterdam")
+summary = f"It's {weather['temp']}°C"
+return summary</code></pre>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="3">
+                    <div class="agent-step-icon">▶️</div>
+                    <div class="agent-step-content">
+                        <h4>3. Monty Starts Execution</h4>
+                        <div class="agent-console">Starting Python execution...</div>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="4">
+                    <div class="agent-step-icon">⏸️</div>
+                    <div class="agent-step-content">
+                        <h4>4. Pauses at External Call</h4>
+                        <div class="agent-snapshot-box">
+                            <code>get_weather("Amsterdam")</code>
+                            <div class="agent-snapshot-size">State serialized: 2,847 bytes → saved to DB</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="5">
+                    <div class="agent-step-icon">🌐</div>
+                    <div class="agent-step-content">
+                        <h4>5. Host Calls Real API</h4>
+                        <div class="agent-api">
+                            <span class="agent-api-method">GET</span>
+                            <span class="agent-api-url">api.weather.com/amsterdam</span>
+                            <div class="agent-api-response">→ {"temp": 12, "conditions": "Cloudy"}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="6">
+                    <div class="agent-step-icon">▶️</div>
+                    <div class="agent-step-content">
+                        <h4>6. Resume from Snapshot</h4>
+                        <div class="agent-console">
+                            Loading state from DB...<br>
+                            Resuming with return value...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="agent-step" data-step="7">
+                    <div class="agent-step-icon">✅</div>
+                    <div class="agent-step-content">
+                        <h4>7. Execution Complete</h4>
+                        <div class="agent-message assistant">
+                            "It's 12°C and Cloudy in Amsterdam"
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="agent-footer">
+                <div class="agent-key-points">
+                    <div class="agent-key-point">
+                        <span class="agent-key-icon">🔒</span>
+                        <span>Sandboxed - no filesystem/network access</span>
+                    </div>
+                    <div class="agent-key-point">
+                        <span class="agent-key-icon">💾</span>
+                        <span>State serializes to bytes - store anywhere</span>
+                    </div>
+                    <div class="agent-key-point">
+                        <span class="agent-key-icon">⚡</span>
+                        <span>Microsecond execution - no cold starts</span>
+                    </div>
+                </div>
+                <div class="agent-controls">
+                    <button class="btn btn-ghost" onclick="resetAgentDemo()">↺ Reset</button>
+                    <button class="btn btn-primary" onclick="playAgentDemo()" id="agentPlayBtn">▶ Play Demo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Snapshot Modal -->
     <div class="snapshot-modal" id="snapshotModal" style="display: none;">
         <div class="snapshot-modal-content">
@@ -229,6 +337,6 @@
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=7">
+    <script src="js/app.js?v=8">
 </body>
 </html>

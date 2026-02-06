@@ -1077,6 +1077,221 @@ select option {
 }
 
 /* ============================================
+   Agent Flow Demo Modal
+   ============================================ */
+
+.agent-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+}
+
+.agent-modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 95%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlide 0.3s ease;
+}
+
+.agent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+}
+
+.agent-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.agent-flow {
+    flex: 1;
+    overflow: auto;
+    padding: 24px;
+}
+
+.agent-step {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    opacity: 0.3;
+    transform: translateX(-20px);
+    transition: all 0.4s ease;
+}
+
+.agent-step.active {
+    opacity: 1;
+    transform: translateX(0);
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.agent-step.complete {
+    opacity: 0.7;
+    transform: translateX(0);
+}
+
+.agent-step-icon {
+    font-size: 28px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-2);
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.agent-step.active .agent-step-icon {
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.agent-step-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.agent-step-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--text);
+}
+
+.agent-message {
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.agent-message.user {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.agent-message.assistant {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--primary-hover);
+}
+
+.agent-code {
+    background: var(--bg);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    overflow-x: auto;
+    margin: 0;
+    border: 1px solid var(--border);
+}
+
+.agent-code code {
+    color: var(--text);
+}
+
+.agent-console {
+    background: #000;
+    color: var(--success);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+}
+
+.agent-snapshot-box {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.agent-snapshot-box code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--warning);
+}
+
+.agent-snapshot-size {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.agent-api {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+}
+
+.agent-api-method {
+    color: var(--success);
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.agent-api-url {
+    color: var(--text-muted);
+}
+
+.agent-api-response {
+    color: var(--info);
+    margin-top: 8px;
+}
+
+.agent-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.agent-key-points {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.agent-key-point {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.agent-key-icon {
+    font-size: 14px;
+}
+
+.agent-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* ============================================
    Responsive
    ============================================ */
 
@@ -1099,5 +1314,10 @@ select option {
     .header-center {
         order: 3;
         width: 100%;
+    }
+    
+    .agent-key-points {
+        flex-direction: column;
+        gap: 8px;
     }
 }

@@ -1802,3 +1802,96 @@ function showBenchmarkResults(results) {
 function closeBenchmark() {
     document.getElementById('benchmarkPanel').style.display = 'none';
 }
+
+// ============================================
+// AGENT FLOW DEMO
+// ============================================
+let agentDemoPlaying = false;
+let agentDemoStep = 0;
+
+/**
+ * Show agent demo modal
+ */
+function showAgentDemo() {
+    document.getElementById('agentModal').style.display = 'flex';
+    resetAgentDemo();
+}
+
+/**
+ * Close agent demo modal
+ */
+function closeAgentDemo() {
+    document.getElementById('agentModal').style.display = 'none';
+    agentDemoPlaying = false;
+}
+
+/**
+ * Reset agent demo to initial state
+ */
+function resetAgentDemo() {
+    agentDemoPlaying = false;
+    agentDemoStep = 0;
+    
+    const steps = document.querySelectorAll('.agent-step');
+    steps.forEach(step => {
+        step.classList.remove('active', 'complete');
+    });
+    
+    document.getElementById('agentPlayBtn').textContent = '▶ Play Demo';
+    document.getElementById('agentPlayBtn').disabled = false;
+}
+
+/**
+ * Play agent demo animation
+ */
+async function playAgentDemo() {
+    if (agentDemoPlaying) return;
+    
+    agentDemoPlaying = true;
+    document.getElementById('agentPlayBtn').textContent = 'Playing...';
+    document.getElementById('agentPlayBtn').disabled = true;
+    
+    const steps = document.querySelectorAll('.agent-step');
+    const delays = [600, 1000, 800, 1200, 1500, 1000, 800];
+    
+    for (let i = 0; i < steps.length; i++) {
+        if (!agentDemoPlaying) break;
+        
+        // Mark previous step as complete
+        if (i > 0) {
+            steps[i - 1].classList.remove('active');
+            steps[i - 1].classList.add('complete');
+        }
+        
+        // Activate current step
+        steps[i].classList.add('active');
+        
+        // Scroll into view
+        steps[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Wait
+        await sleep(delays[i] || 800);
+    }
+    
+    // Final step complete
+    if (agentDemoPlaying && steps.length > 0) {
+        await sleep(500);
+        steps[steps.length - 1].classList.remove('active');
+        steps[steps.length - 1].classList.add('complete');
+    }
+    
+    agentDemoPlaying = false;
+    document.getElementById('agentPlayBtn').textContent = '↺ Replay';
+    document.getElementById('agentPlayBtn').disabled = false;
+    document.getElementById('agentPlayBtn').onclick = () => {
+        resetAgentDemo();
+        setTimeout(playAgentDemo, 100);
+    };
+}
+
+/**
+ * Sleep helper
+ */
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
