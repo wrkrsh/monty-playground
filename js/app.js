@@ -240,9 +240,48 @@ class MontySimulator {
         this.output = [];
     }
     
+    // Iterative fibonacci helper
+    fib(n) {
+        if (n <= 1) return n;
+        let a = 0, b = 1;
+        for (let i = 2; i <= n; i++) {
+            [a, b] = [b, a + b];
+        }
+        return b;
+    }
+    
+    // Handle fibonacci example specifically
+    runFibonacciExample() {
+        this.output.push({ type: 'stdout', text: 'Fibonacci sequence:' });
+        for (let i = 0; i < 12; i++) {
+            this.output.push({ type: 'stdout', text: `  fib(${i}) = ${this.fib(i)}` });
+        }
+        return { output: this.output, result: this.fib(12) };
+    }
+    
+    // Handle async example specifically  
+    runAsyncExample() {
+        const items = ['apple', 'banana', 'cherry'];
+        items.forEach(item => {
+            this.output.push({ type: 'stdout', text: `Processing: ${item}` });
+        });
+        this.output.push({ type: 'stdout', text: '' });
+        this.output.push({ type: 'stdout', text: `All done! Processed ${items.length} items` });
+        return { output: this.output, result: items.map(i => `Processed: ${i}`) };
+    }
+    
     run(code) {
         this.output = [];
         this.variables = {};
+        
+        // Handle specific examples that need special treatment
+        if (code.includes('Fibonacci sequence') && code.includes('for i in range(12)')) {
+            return this.runFibonacciExample();
+        }
+        if (code.includes('async def process_item') && code.includes('await main()')) {
+            return this.runAsyncExample();
+        }
+        
         const lines = code.split('\n');
         let result = null;
         let inFunction = false;
@@ -413,8 +452,13 @@ class MontySimulator {
             }
             if (fnName === 'fib') {
                 const n = parseInt(args);
-                const fib = (n) => n <= 1 ? n : fib(n-1) + fib(n-2);
-                return fib(n);
+                // Iterative to avoid stack overflow
+                if (n <= 1) return n;
+                let a = 0, b = 1;
+                for (let i = 2; i <= n; i++) {
+                    [a, b] = [b, a + b];
+                }
+                return b;
             }
             if (fnName === 'add5') {
                 return parseInt(args) + 5;
