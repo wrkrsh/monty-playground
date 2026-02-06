@@ -188,12 +188,12 @@ function initEditor() {
         
         // Try to load WASM
         try {
-            MontyWasm = await import('../wasm/monty.wasi-browser.js');
+            MontyWasm = await import('../wasm/monty-browser.js');
             console.log('Monty WASM loaded');
             updateStatus('ready', 'Ready');
         } catch (err) {
             console.error('WASM load failed:', err);
-            updateStatus('error', 'WASM failed to load');
+            updateStatus('error', 'WASM failed: ' + err.message);
         }
         
         // Hide loading
