@@ -226,13 +226,76 @@ print(f"  • Type hints: typed_fn(21) = {typed_fn(21)}")
 };
 
 // ============================================
-// EXTERNAL FUNCTIONS (mock implementations)
+// EXTERNAL FUNCTIONS
 // ============================================
-const EXTERNAL_FUNCTIONS = {
-    fetch: (url) => `{"status":"ok","data":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]}`,
-    get_weather: (city) => `{"city":"${city}","temp_c":18,"conditions":"Partly cloudy"}`,
-    search: (q) => `[{"title":"Result 1","url":"https://example.com"}]`,
+
+// Built-in external functions
+const BUILTIN_EXTERNAL_FUNCTIONS = {
+    fetch: {
+        description: 'Fetch data from a URL',
+        returnTemplate: '{"status":"ok","data":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]}',
+        handler: (url) => `{"status":"ok","data":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]}`,
+    },
+    get_weather: {
+        description: 'Get weather for a city',
+        returnTemplate: '{"city":"$1","temp_c":18,"conditions":"Partly cloudy"}',
+        handler: (city) => `{"city":"${city}","temp_c":18,"conditions":"Partly cloudy"}`,
+    },
+    search: {
+        description: 'Search the web',
+        returnTemplate: '[{"title":"Result 1","url":"https://example.com"}]',
+        handler: (q) => `[{"title":"Result 1","url":"https://example.com"}]`,
+    },
 };
+
+// User-defined external functions
+let userExternalFunctions = {};
+
+// Combined external functions (for execution)
+function getExternalFunctions() {
+    const combined = {};
+    
+    // Add built-in functions
+    for (const [name, fn] of Object.entries(BUILTIN_EXTERNAL_FUNCTIONS)) {
+        combined[name] = fn.handler;
+    }
+    
+    // Add user functions (can override built-in)
+    for (const [name, fn] of Object.entries(userExternalFunctions)) {
+        combined[name] = (...args) => {
+            let result = fn.returnTemplate;
+            // Replace $1, $2, etc. with args
+            args.forEach((arg, i) => {
+                result = result.replace(new RegExp(`\\$${i + 1}`, 'g'), arg);
+            });
+            return result;
+        };
+    }
+    
+    return combined;
+}
+
+// For backwards compatibility
+const EXTERNAL_FUNCTIONS = new Proxy({}, {
+    get: (target, prop) => {
+        const fns = getExternalFunctions();
+        return fns[prop];
+    },
+    has: (target, prop) => {
+        const fns = getExternalFunctions();
+        return prop in fns;
+    },
+    ownKeys: () => {
+        const fns = getExternalFunctions();
+        return Object.keys(fns);
+    },
+    getOwnPropertyDescriptor: (target, prop) => {
+        const fns = getExternalFunctions();
+        if (prop in fns) {
+            return { enumerable: true, configurable: true, value: fns[prop] };
+        }
+    },
+});
 
 // ============================================
 // EXECUTION MODE
@@ -576,6 +639,9 @@ require(['vs/editor/editor.main'], async function () {
     
     // Setup type check listener
     setupTypeCheckListener();
+    
+    // Initialize external functions UI
+    initExternalFunctionsUI();
     
     // Hide loading
     document.getElementById('loading').style.display = 'none';
@@ -1365,4 +1431,223 @@ function copySnapshotBase64() {
     }).catch(() => {
         showToast('Failed to copy');
     });
+}
+
+// ============================================
+// EXTERNAL FUNCTIONS UI
+// ============================================
+let externalSidebarCollapsed = true;
+
+/**
+ * Initialize external functions UI
+ */
+function initExternalFunctionsUI() {
+    // Load saved user functions from localStorage
+    const saved = localStorage.getItem('monty-external-functions');
+    if (saved) {
+        try {
+            userExternalFunctions = JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to load saved external functions:', e);
+        }
+    }
+    
+    renderExternalFunctions();
+    
+    // Start collapsed
+    const sidebar = document.getElementById('externalSidebar');
+    if (sidebar) {
+        sidebar.classList.add('collapsed');
+    }
+}
+
+/**
+ * Toggle external functions sidebar
+ */
+function toggleExternalSidebar() {
+    const sidebar = document.getElementById('externalSidebar');
+    externalSidebarCollapsed = !externalSidebarCollapsed;
+    
+    if (externalSidebarCollapsed) {
+        sidebar.classList.add('collapsed');
+    } else {
+        sidebar.classList.remove('collapsed');
+    }
+}
+
+/**
+ * Render external functions list
+ */
+function renderExternalFunctions() {
+    const list = document.getElementById('externalList');
+    if (!list) return;
+    
+    let html = '';
+    
+    // Built-in functions
+    for (const [name, fn] of Object.entries(BUILTIN_EXTERNAL_FUNCTIONS)) {
+        html += `
+            <div class="external-item">
+                <div class="external-item-header">
+                    <span class="external-item-name">${name}()</span>
+                    <span class="external-item-badge">built-in</span>
+                </div>
+                <div class="external-item-desc">${fn.description}</div>
+                <div class="external-item-return">→ ${escapeHtml(fn.returnTemplate.slice(0, 50))}${fn.returnTemplate.length > 50 ? '...' : ''}</div>
+            </div>
+        `;
+    }
+    
+    // User functions
+    for (const [name, fn] of Object.entries(userExternalFunctions)) {
+        html += `
+            <div class="external-item">
+                <div class="external-item-header">
+                    <span class="external-item-name">${name}()</span>
+                    <span class="external-item-badge" style="background: var(--primary); color: #000;">custom</span>
+                </div>
+                <div class="external-item-desc">${fn.description || 'Custom function'}</div>
+                <div class="external-item-return">→ ${escapeHtml(fn.returnTemplate.slice(0, 50))}${fn.returnTemplate.length > 50 ? '...' : ''}</div>
+                <div class="external-item-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="editExternalFunction('${name}')">Edit</button>
+                    <button class="btn btn-ghost btn-sm" onclick="deleteExternalFunction('${name}')">Delete</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    list.innerHTML = html;
+}
+
+/**
+ * Add a new external function
+ */
+function addExternalFunction() {
+    showExternalEditModal(null);
+}
+
+/**
+ * Edit an external function
+ */
+function editExternalFunction(name) {
+    showExternalEditModal(name);
+}
+
+/**
+ * Delete an external function
+ */
+function deleteExternalFunction(name) {
+    if (confirm(`Delete function "${name}"?`)) {
+        delete userExternalFunctions[name];
+        saveExternalFunctions();
+        renderExternalFunctions();
+        showToast(`Function "${name}" deleted`);
+    }
+}
+
+/**
+ * Show edit modal for external function
+ */
+function showExternalEditModal(existingName) {
+    const existing = existingName ? userExternalFunctions[existingName] : null;
+    
+    const modal = document.createElement('div');
+    modal.className = 'external-edit-modal';
+    modal.id = 'externalEditModal';
+    modal.innerHTML = `
+        <div class="external-edit-content">
+            <div class="external-edit-title">${existing ? 'Edit' : 'Add'} External Function</div>
+            
+            <div class="external-edit-field">
+                <label class="external-edit-label">Function Name</label>
+                <input type="text" class="external-edit-input" id="extFnName" 
+                       value="${existingName || ''}" 
+                       placeholder="my_function"
+                       ${existingName ? 'readonly' : ''}>
+            </div>
+            
+            <div class="external-edit-field">
+                <label class="external-edit-label">Description</label>
+                <input type="text" class="external-edit-input" id="extFnDesc" 
+                       value="${existing?.description || ''}" 
+                       placeholder="What this function does">
+            </div>
+            
+            <div class="external-edit-field">
+                <label class="external-edit-label">Return Value Template</label>
+                <textarea class="external-edit-textarea" id="extFnReturn" 
+                          placeholder='{"result": "$1"} (use $1, $2 for args)'>${existing?.returnTemplate || ''}</textarea>
+            </div>
+            
+            <div class="external-edit-actions">
+                <button class="btn btn-ghost" onclick="closeExternalEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveExternalFunction('${existingName || ''}')">Save</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Focus name input
+    setTimeout(() => {
+        document.getElementById('extFnName').focus();
+    }, 100);
+}
+
+/**
+ * Close external function edit modal
+ */
+function closeExternalEditModal() {
+    const modal = document.getElementById('externalEditModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+/**
+ * Save external function from modal
+ */
+function saveExternalFunction(existingName) {
+    const name = document.getElementById('extFnName').value.trim();
+    const desc = document.getElementById('extFnDesc').value.trim();
+    const returnTemplate = document.getElementById('extFnReturn').value;
+    
+    if (!name) {
+        showToast('Function name is required');
+        return;
+    }
+    
+    if (!name.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+        showToast('Invalid function name (use letters, numbers, underscores)');
+        return;
+    }
+    
+    if (!returnTemplate) {
+        showToast('Return value template is required');
+        return;
+    }
+    
+    // Check if overwriting built-in
+    if (!existingName && BUILTIN_EXTERNAL_FUNCTIONS[name]) {
+        if (!confirm(`This will override the built-in "${name}" function. Continue?`)) {
+            return;
+        }
+    }
+    
+    userExternalFunctions[name] = {
+        description: desc || 'Custom function',
+        returnTemplate: returnTemplate,
+    };
+    
+    saveExternalFunctions();
+    renderExternalFunctions();
+    closeExternalEditModal();
+    showToast(`Function "${name}" saved`);
+}
+
+/**
+ * Save external functions to localStorage
+ */
+function saveExternalFunctions() {
+    localStorage.setItem('monty-external-functions', JSON.stringify(userExternalFunctions));
 }

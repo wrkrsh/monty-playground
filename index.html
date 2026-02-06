@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=5">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -89,13 +89,29 @@
     <!-- Main Content -->
     <main class="main">
         <!-- Editor Panel -->
-        <div class="panel">
+        <div class="panel editor-panel">
             <div class="panel-header">
                 <span>main.py</span>
                 <span>Ctrl+Enter to run</span>
             </div>
             <div class="panel-content">
                 <div id="editor"></div>
+            </div>
+            
+            <!-- External Functions Sidebar (collapsible) -->
+            <div class="external-sidebar" id="externalSidebar">
+                <div class="external-header" onclick="toggleExternalSidebar()">
+                    <span>🔌 External Functions</span>
+                    <span class="external-toggle" id="externalToggle">▼</span>
+                </div>
+                <div class="external-content" id="externalContent">
+                    <div class="external-list" id="externalList">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <button class="btn btn-ghost external-add" onclick="addExternalFunction()">
+                        + Add Function
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -194,6 +210,6 @@
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=5">
+    <script src="js/app.js?v=6">
 </body>
 </html>

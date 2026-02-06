@@ -542,6 +542,212 @@ select option {
 }
 
 /* ============================================
+   External Functions Sidebar
+   ============================================ */
+
+.editor-panel {
+    position: relative;
+}
+
+.external-sidebar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    max-height: 40%;
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+
+.external-sidebar.collapsed .external-content {
+    display: none;
+}
+
+.external-sidebar.collapsed .external-toggle {
+    transform: rotate(-90deg);
+}
+
+.external-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    user-select: none;
+}
+
+.external-header:hover {
+    background: var(--border);
+}
+
+.external-toggle {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+}
+
+.external-content {
+    flex: 1;
+    overflow: auto;
+    padding: 8px;
+}
+
+.external-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.external-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.external-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.external-item-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.external-item-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+.external-item-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.external-item-return {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    word-break: break-all;
+}
+
+.external-item-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.external-add {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px dashed var(--border);
+    background: transparent;
+}
+
+.external-add:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* External function edit modal */
+.external-edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+}
+
+.external-edit-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.external-edit-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.external-edit-field {
+    margin-bottom: 12px;
+}
+
+.external-edit-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.external-edit-input {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+
+.external-edit-input:focus {
+    border-color: var(--primary);
+}
+
+.external-edit-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    resize: vertical;
+    outline: none;
+}
+
+.external-edit-textarea:focus {
+    border-color: var(--primary);
+}
+
+.external-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* ============================================
    Snapshot Modal
    ============================================ */
 
