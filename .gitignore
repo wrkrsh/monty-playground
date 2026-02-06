@@ -4,6 +4,3 @@ package-lock.json
 *.log
 dist/
 plan.md
-
-# WASM binary is large - get via npm install
-wasm/*.wasm
