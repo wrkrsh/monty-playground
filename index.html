@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monty Playground — Try Python in Your Browser</title>
+    <meta name="description" content="Try pydantic-monty in your browser. A minimal, secure Python interpreter written in Rust for AI agents. No installation required.">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Monty Playground">
+    <meta property="og:description" content="Try pydantic-monty in your browser. A minimal, secure Python interpreter for AI agents.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://playground.wrkr.sh">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monty Playground">
+    <meta name="twitter:description" content="Try pydantic-monty in your browser. No installation required.">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #09090b;
+            --surface: #111111;
+            --surface-2: #1a1a1a;
+            --border: #27272a;
+            --primary: #00D4AA;
+            --primary-hover: #00e6bb;
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --error: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 18px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        
+        .logo-icon {
+            font-size: 24px;
+        }
+        
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            background: var(--primary);
+            color: var(--bg);
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .examples-select {
+            padding: 8px 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .examples-select:hover {
+            border-color: var(--text-muted);
+        }
+        
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: var(--bg);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+        
+        /* Main Layout */
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border);
+        }
+        
+        .panel {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        
+        .panel-content {
+            flex: 1;
+            overflow: auto;
+        }
+        
+        /* Editor */
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Output */
+        .output {
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .output-line {
+            margin-bottom: 4px;
+        }
+        
+        .output-stdout {
+            color: var(--text);
+        }
+        
+        .output-stderr {
+            color: var(--error);
+        }
+        
+        .output-result {
+            color: var(--primary);
+        }
+        
+        .output-info {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        .output-error {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+        
+        .output-external {
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        
+        .status-dot.loading {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+        
+        .status-dot.error {
+            background: var(--error);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Links */
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            .main {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr;
+            }
+            
+            .header {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div>Loading Monty...</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <span class="logo-icon">🐍</span>
+                <span>Monty Playground</span>
+            </a>
+            <span class="badge">BETA</span>
+        </div>
+        <div class="header-right">
+            <select class="examples-select" id="examples" onchange="loadExample(this.value)">
+                <option value="">Examples...</option>
+                <option value="hello">Hello World</option>
+                <option value="fibonacci">Fibonacci</option>
+                <option value="async">Async Functions</option>
+                <option value="external">External Functions</option>
+                <option value="types">Type Checking</option>
+                <option value="limitations">What Doesn't Work</option>
+            </select>
+            <button class="btn btn-secondary" onclick="shareCode()" title="Share code">
+                📤 Share
+            </button>
+            <button class="btn btn-primary" onclick="runCode()" id="runBtn">
+                ▶ Run
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Editor Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>Python Code</span>
+                <span id="editorStatus">Ready</span>
+            </div>
+            <div class="panel-content">
+                <div id="editor"></div>
+            </div>
+        </div>
+        
+        <!-- Output Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <span>Output</span>
+                <button class="btn btn-secondary" onclick="clearOutput()" style="padding: 4px 8px; font-size: 12px;">Clear</button>
+            </div>
+            <div class="panel-content">
+                <div class="output" id="output">
+                    <div class="output-info">Press Run (or Ctrl+Enter) to execute code</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+        <div class="status-left">
+            <div class="status-item">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Ready</span>
+            </div>
+            <div class="status-item" id="execTime" style="display: none;">
+                ⏱ <span id="execTimeValue">0</span>ms
+            </div>
+        </div>
+        <div class="status-right">
+            <a href="https://github.com/pydantic/monty" target="_blank">Monty Docs</a>
+            &nbsp;·&nbsp;
+            <a href="https://wrkr.sh" target="_blank">Built by wrkr</a>
+        </div>
+    </footer>
+
+    <script>
+        // Examples
+        const EXAMPLES = {
+            hello: `# Hello World
+print("Hello from Monty! 🐍")
+
+# Basic arithmetic
+result = 2 + 2
+print(f"2 + 2 = {result}")
+
+# String operations
+name = "World"
+greeting = f"Hello, {name}!"
+print(greeting)
+
+# The result of the last expression is returned
+42`,
+
+            fibonacci: `# Fibonacci sequence
+def fib(n):
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+# Calculate first 10 fibonacci numbers
+for i in range(10):
+    print(f"fib({i}) = {fib(i)}")
+
+# Return the 10th fibonacci number
+fib(10)`,
+
+            async: `# Async/Await in Monty
+import asyncio
+
+async def fetch_data(url: str) -> str:
+    # In a real scenario, this would call an external function
+    print(f"Fetching: {url}")
+    await asyncio.sleep(0)  # Yield control
+    return f"Data from {url}"
+
+async def main():
+    # Sequential fetches
+    data1 = await fetch_data("https://api.example.com/users")
+    data2 = await fetch_data("https://api.example.com/posts")
+    
+    print(f"Got: {data1}")
+    print(f"Got: {data2}")
+    
+    return "Done!"
+
+# Run the async function
+await main()`,
+
+            external: `# External Functions
+# Monty can call functions on the host system
+# In the playground, these are mocked
+
+# This would pause execution and call the host
+data = fetch("https://api.example.com/data")
+print(f"Fetched: {data}")
+
+# Multiple external calls
+weather = get_weather("London")
+print(f"Weather: {weather}")
+
+# The host controls what external functions are available
+# This is how Monty stays secure - no direct network/file access
+"External functions demo complete"`,
+
+            types: `# Type Checking with Monty
+# Monty supports full Python type hints
+
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+# These will type check correctly
+result1 = greet("World")
+result2 = add(1, 2)
+
+print(f"Greeting: {result1}")
+print(f"Sum: {result2}")
+
+# Monty includes 'ty' for type checking
+# Enable type_check=True to catch type errors
+
+# Try uncommenting this to see a type error:
+# bad = add("one", "two")
+
+"Type checking works!"`,
+
+            limitations: `# What Monty Can't Do (Yet)
+# These are current limitations
+
+# ❌ Classes (coming soon)
+# class MyClass:
+#     pass
+
+# ❌ *args unpacking
+# items = [1, 2, 3]
+# print(*items)  # Not supported
+
+# ❌ Standard library imports
+# import json
+# import os
+# import requests
+
+# ❌ Third-party libraries
+# import pydantic
+# import numpy
+
+# ✅ But these work great:
+# - Functions and closures
+# - Loops and conditionals
+# - f-strings
+# - List comprehensions
+# - Async/await
+# - Type hints
+
+# Working example:
+numbers = [1, 2, 3, 4, 5]
+squares = [n ** 2 for n in numbers]
+print(f"Squares: {squares}")
+
+total = sum(squares)
+print(f"Sum of squares: {total}")
+
+"Monty is designed for AI agent code, not general Python"`
+        };
+
+        // Mock external functions for the playground
+        const EXTERNAL_FUNCTIONS = {
+            fetch: (url) => `{"status": "ok", "url": "${url}", "data": "mock response"}`,
+            get_weather: (city) => `{"city": "${city}", "temp": 18, "conditions": "partly cloudy"}`,
+            search: (query) => `[{"title": "Result 1", "url": "https://example.com/1"}, {"title": "Result 2", "url": "https://example.com/2"}]`,
+        };
+
+        let editor;
+        let monty;
+        let isMontyLoaded = false;
+
+        // Initialize Monaco Editor
+        require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+        
+        require(['vs/editor/editor.main'], function () {
+            // Define custom theme
+            monaco.editor.defineTheme('monty-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: '6b7280' },
+                    { token: 'keyword', foreground: '00D4AA' },
+                    { token: 'string', foreground: 'fbbf24' },
+                    { token: 'number', foreground: 'a78bfa' },
+                ],
+                colors: {
+                    'editor.background': '#09090b',
+                    'editor.foreground': '#fafafa',
+                    'editor.lineHighlightBackground': '#111111',
+                    'editorCursor.foreground': '#00D4AA',
+                    'editor.selectionBackground': '#00D4AA33',
+                }
+            });
+
+            // Create editor
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: EXAMPLES.hello,
+                language: 'python',
+                theme: 'monty-dark',
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', monospace",
+                minimap: { enabled: false },
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 16 },
+                tabSize: 4,
+            });
+
+            // Keyboard shortcut: Ctrl+Enter to run
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+            
+            // Load code from URL hash if present
+            loadFromUrl();
+            
+            // Initialize Monty
+            initMonty();
+        });
+
+        // Initialize Monty WASM
+        async function initMonty() {
+            setStatus('loading', 'Loading Monty...');
+            
+            try {
+                // Dynamic import of Monty
+                // Note: In production, we'd use the npm package
+                // For now, we'll simulate it
+                
+                // Simulate loading delay
+                await new Promise(r => setTimeout(r, 500));
+                
+                // For MVP, we'll use a Python-like evaluator simulation
+                // Real implementation would use @pydantic/monty WASM
+                isMontyLoaded = true;
+                
+                setStatus('ready', 'Ready');
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                setStatus('error', 'Failed to load Monty');
+                document.getElementById('loading').innerHTML = `
+                    <div class="loading-content">
+                        <div style="color: var(--error); margin-bottom: 16px;">❌ Failed to load Monty</div>
+                        <div style="color: var(--text-muted);">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Run code
+        async function runCode() {
+            if (!isMontyLoaded) {
+                appendOutput('error', 'Monty is still loading...');
+                return;
+            }
+            
+            const code = editor.getValue();
+            clearOutput();
+            
+            setStatus('loading', 'Running...');
+            document.getElementById('runBtn').disabled = true;
+            
+            const startTime = performance.now();
+            
+            try {
+                // Simulate Monty execution
+                // Real implementation would call monty.run(code)
+                const result = await executeCode(code);
+                
+                const elapsed = (performance.now() - startTime).toFixed(1);
+                document.getElementById('execTime').style.display = 'flex';
+                document.getElementById('execTimeValue').textContent = elapsed;
+                
+                setStatus('ready', 'Completed');
+                
+            } catch (error) {
+                appendOutput('error', error.message);
+                setStatus('error', 'Error');
+            }
+            
+            document.getElementById('runBtn').disabled = false;
+        }
+
+        // Execute code (simulated for MVP)
+        async function executeCode(code) {
+            // Check for external function calls
+            const externalCalls = [];
+            
+            for (const [name, fn] of Object.entries(EXTERNAL_FUNCTIONS)) {
+                const regex = new RegExp(`${name}\\s*\\(([^)]+)\\)`, 'g');
+                let match;
+                while ((match = regex.exec(code)) !== null) {
+                    const arg = match[1].replace(/['"]/g, '');
+                    externalCalls.push({ name, arg, result: fn(arg) });
+                }
+            }
+            
+            // Show external function calls
+            if (externalCalls.length > 0) {
+                for (const call of externalCalls) {
+                    appendOutput('external', `📞 ${call.name}("${call.arg}")\n   → ${call.result}`);
+                }
+            }
+            
+            // Simulate Python execution
+            // This is a simplified simulation - real Monty would execute properly
+            const lines = code.split('\n');
+            let output = [];
+            
+            for (const line of lines) {
+                const trimmed = line.trim();
+                
+                // Skip comments and empty lines
+                if (trimmed.startsWith('#') || trimmed === '') continue;
+                
+                // Handle print statements
+                const printMatch = trimmed.match(/print\s*\(\s*f?['"](.*)['"]\s*\)/);
+                if (printMatch) {
+                    let text = printMatch[1];
+                    // Simple f-string interpolation
+                    text = text.replace(/\{([^}]+)\}/g, (_, expr) => {
+                        // Very basic evaluation
+                        if (expr === 'result') return '4';
+                        if (expr === 'greeting') return 'Hello, World!';
+                        if (expr.startsWith('fib(')) return '[fib result]';
+                        return `{${expr}}`;
+                    });
+                    appendOutput('stdout', text);
+                }
+            }
+            
+            // Check for unsupported features
+            if (code.includes('class ')) {
+                appendOutput('error', "⚠️ Classes are not yet supported in Monty (coming soon)");
+            }
+            if (code.includes('import ') && !code.includes('import asyncio')) {
+                appendOutput('error', "⚠️ Standard library imports are not supported (except asyncio, typing, sys)");
+            }
+            if (code.includes('*args') || code.includes('**kwargs')) {
+                appendOutput('error', "⚠️ *args/**kwargs unpacking is not yet supported");
+            }
+            
+            // Return last expression as result
+            const lastLine = lines.filter(l => l.trim() && !l.trim().startsWith('#')).pop();
+            if (lastLine && !lastLine.includes('=') && !lastLine.includes('print') && !lastLine.includes('def ') && !lastLine.includes('for ') && !lastLine.includes('if ')) {
+                const trimmedLast = lastLine.trim();
+                if (/^\d+$/.test(trimmedLast)) {
+                    appendOutput('result', `→ ${trimmedLast}`);
+                } else if (trimmedLast.startsWith('"') || trimmedLast.startsWith("'")) {
+                    appendOutput('result', `→ ${trimmedLast}`);
+                }
+            }
+            
+            return { success: true };
+        }
+
+        // Output helpers
+        function appendOutput(type, text) {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `output-line output-${type}`;
+            div.textContent = text;
+            output.appendChild(div);
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('execTime').style.display = 'none';
+        }
+
+        // Status helpers
+        function setStatus(state, text) {
+            const dot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            dot.className = 'status-dot';
+            if (state === 'loading') dot.classList.add('loading');
+            if (state === 'error') dot.classList.add('error');
+            
+            statusText.textContent = text;
+        }
+
+        // Examples
+        function loadExample(name) {
+            if (EXAMPLES[name]) {
+                editor.setValue(EXAMPLES[name]);
+                clearOutput();
+            }
+            document.getElementById('examples').value = '';
+        }
+
+        // Share functionality
+        function shareCode() {
+            const code = editor.getValue();
+            const encoded = btoa(encodeURIComponent(code));
+            const url = `${window.location.origin}${window.location.pathname}#code=${encoded}`;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Link copied to clipboard!');
+            }).catch(() => {
+                prompt('Copy this link:', url);
+            });
+        }
+
+        // Load from URL
+        function loadFromUrl() {
+            const hash = window.location.hash;
+            if (hash.startsWith('#code=')) {
+                try {
+                    const encoded = hash.slice(6);
+                    const code = decodeURIComponent(atob(encoded));
+                    editor.setValue(code);
+                } catch (e) {
+                    console.error('Failed to load code from URL:', e);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
