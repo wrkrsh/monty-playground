@@ -1010,3 +1010,359 @@ function setupTypeCheckListener() {
         });
     }
 }
+
+// ============================================
+// SNAPSHOT VISUALIZATION
+// ============================================
+let currentSnapshot = null;
+let snapshotHistory = [];
+let resumeResolver = null;
+
+/**
+ * Run code with snapshot visualization
+ * Shows modal when execution pauses at external function calls
+ */
+async function runWithSnapshots() {
+    const code = editor.getValue();
+    clearOutput();
+    snapshotHistory = [];
+    
+    setStatus('running', 'Starting...');
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('stepBtn').disabled = true;
+    
+    const startTime = performance.now();
+    
+    try {
+        // Check if code has external functions
+        const externalFns = [];
+        for (const fnName of Object.keys(EXTERNAL_FUNCTIONS)) {
+            if (code.includes(fnName + '(')) {
+                externalFns.push(fnName);
+            }
+        }
+        
+        if (externalFns.length === 0) {
+            appendOutput('info', 'No external functions found. Running normally...');
+            await runCode();
+            return;
+        }
+        
+        if (executionMode === 'wasm' && MontyWasm) {
+            // Real WASM execution with snapshots
+            await runWasmWithSnapshots(code, externalFns);
+        } else {
+            // Simulated snapshot execution
+            await runSimulatedSnapshots(code, externalFns);
+        }
+        
+        const elapsed = (performance.now() - startTime).toFixed(1);
+        document.getElementById('execTime').style.display = 'flex';
+        document.getElementById('execTimeValue').textContent = elapsed;
+        
+        setStatus('ready', 'Done');
+    } catch (error) {
+        hideSnapshotModal();
+        appendOutput('error', `Error: ${error.message}`);
+        if (error.traceback) {
+            appendOutput('error', error.traceback);
+        }
+        setStatus('error', 'Error');
+    }
+    
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('stepBtn').disabled = false;
+}
+
+/**
+ * Run with WASM snapshots
+ */
+async function runWasmWithSnapshots(code, externalFns) {
+    const result = MontyWasm.Monty.create(code, {
+        scriptName: 'main.py',
+        externalFunctions: externalFns,
+    });
+    
+    if (result instanceof MontyWasm.MontyException ||
+        result?.constructor?.name === 'MontyException') {
+        throw new Error(result.message || 'Syntax error');
+    }
+    
+    const monty = result;
+    let progress = monty.start();
+    
+    while (progress instanceof MontyWasm.MontySnapshot ||
+           progress?.constructor?.name === 'MontySnapshot') {
+        
+        // Show snapshot modal
+        currentSnapshot = progress;
+        const snapshotBytes = progress.dump();
+        
+        showSnapshotModal({
+            functionName: progress.functionName,
+            args: progress.args,
+            kwargs: progress.kwargs,
+            size: snapshotBytes.length,
+        });
+        
+        // Wait for user to provide return value
+        const returnValue = await waitForResume();
+        
+        if (returnValue === null) {
+            // User cancelled
+            hideSnapshotModal();
+            appendOutput('info', 'Execution cancelled');
+            return;
+        }
+        
+        // Record in history
+        snapshotHistory.push({
+            functionName: progress.functionName,
+            args: progress.args,
+            returnValue: returnValue,
+            size: snapshotBytes.length,
+        });
+        
+        updateTimeline();
+        
+        // Resume execution
+        progress = progress.resume({ returnValue });
+    }
+    
+    hideSnapshotModal();
+    
+    // Execution complete
+    if (progress instanceof MontyWasm.MontyComplete ||
+        progress?.constructor?.name === 'MontyComplete') {
+        appendOutput('result', `→ ${formatValue(progress.output)}`);
+    }
+}
+
+/**
+ * Simulated snapshot execution for non-WASM mode
+ */
+async function runSimulatedSnapshots(code, externalFns) {
+    // Find external function calls in order
+    const calls = [];
+    const lines = code.split('\n');
+    
+    for (const line of lines) {
+        for (const fnName of externalFns) {
+            const match = line.match(new RegExp(`${fnName}\\s*\\(\\s*["']([^"']+)["']\\s*\\)`));
+            if (match) {
+                calls.push({ functionName: fnName, args: [match[1]] });
+            }
+        }
+    }
+    
+    // Simulate pausing at each call
+    for (const call of calls) {
+        currentSnapshot = {
+            functionName: call.functionName,
+            args: call.args,
+            dump: () => new Uint8Array(Math.floor(Math.random() * 5000) + 1000),
+        };
+        
+        const mockSize = Math.floor(Math.random() * 5000) + 1000;
+        
+        showSnapshotModal({
+            functionName: call.functionName,
+            args: call.args,
+            size: mockSize,
+        });
+        
+        // Wait for user input
+        const returnValue = await waitForResume();
+        
+        if (returnValue === null) {
+            hideSnapshotModal();
+            appendOutput('info', 'Execution cancelled');
+            return;
+        }
+        
+        // Record in history
+        snapshotHistory.push({
+            functionName: call.functionName,
+            args: call.args,
+            returnValue: returnValue,
+            size: mockSize,
+        });
+        
+        updateTimeline();
+        
+        appendOutput('external', `📞 ${call.functionName}(${JSON.stringify(call.args[0])})\n   → ${JSON.stringify(returnValue)}`);
+    }
+    
+    hideSnapshotModal();
+    
+    // Run the simulated result
+    appendOutput('result', '→ "Execution complete"');
+}
+
+/**
+ * Show snapshot modal
+ */
+function showSnapshotModal(info) {
+    const modal = document.getElementById('snapshotModal');
+    modal.style.display = 'flex';
+    
+    document.getElementById('snapshotFnName').textContent = info.functionName;
+    document.getElementById('snapshotArgs').textContent = JSON.stringify(info.args).slice(1, -1);
+    document.getElementById('snapshotSize').textContent = info.size.toLocaleString();
+    
+    // Pre-fill with mock response
+    const mockFn = EXTERNAL_FUNCTIONS[info.functionName];
+    if (mockFn && info.args[0]) {
+        const mockValue = mockFn(info.args[0]);
+        document.getElementById('snapshotReturn').value = mockValue;
+    }
+    
+    updateTimeline();
+}
+
+/**
+ * Hide snapshot modal
+ */
+function hideSnapshotModal() {
+    document.getElementById('snapshotModal').style.display = 'none';
+    currentSnapshot = null;
+}
+
+/**
+ * Update timeline visualization
+ */
+function updateTimeline() {
+    const timeline = document.getElementById('snapshotTimeline');
+    
+    let html = snapshotHistory.map((step, i) => `
+        <div class="timeline-item">
+            <div class="timeline-dot complete">✓</div>
+            <div class="timeline-content">
+                <div class="timeline-fn">${step.functionName}(${JSON.stringify(step.args[0] || step.args)})</div>
+                <div class="timeline-result">→ ${JSON.stringify(step.returnValue).slice(0, 60)}${JSON.stringify(step.returnValue).length > 60 ? '...' : ''}</div>
+                <div class="timeline-size">${step.size.toLocaleString()} bytes</div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add current waiting step
+    if (currentSnapshot) {
+        html += `
+            <div class="timeline-item">
+                <div class="timeline-dot active">⏸</div>
+                <div class="timeline-content">
+                    <div class="timeline-fn">${currentSnapshot.functionName || 'Waiting'}(...)</div>
+                    <div class="timeline-result">Awaiting return value...</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    timeline.innerHTML = html || '<div style="color: var(--text-muted); font-size: 12px;">No calls yet</div>';
+}
+
+/**
+ * Wait for user to click resume
+ */
+function waitForResume() {
+    return new Promise(resolve => {
+        resumeResolver = resolve;
+    });
+}
+
+/**
+ * Resume execution with return value
+ */
+function resumeExecution() {
+    if (!resumeResolver) return;
+    
+    const input = document.getElementById('snapshotReturn').value;
+    let value;
+    
+    try {
+        value = JSON.parse(input);
+    } catch {
+        value = input; // Use as string if not valid JSON
+    }
+    
+    resumeResolver(value);
+    resumeResolver = null;
+}
+
+/**
+ * Resume with an exception
+ */
+function resumeWithError() {
+    if (!resumeResolver) return;
+    
+    const errorMsg = prompt('Exception message:', 'External function failed');
+    if (errorMsg === null) return; // Cancelled
+    
+    // For WASM mode, we'd use resumeWithException
+    // For simulation, we just cancel
+    appendOutput('error', `Exception: ${errorMsg}`);
+    resumeResolver(null);
+    resumeResolver = null;
+}
+
+/**
+ * Cancel snapshot execution
+ */
+function cancelSnapshot() {
+    if (resumeResolver) {
+        resumeResolver(null);
+        resumeResolver = null;
+    }
+    hideSnapshotModal();
+}
+
+/**
+ * Download snapshot as binary file
+ */
+function downloadSnapshot() {
+    if (!currentSnapshot) return;
+    
+    let bytes;
+    if (currentSnapshot.dump) {
+        bytes = currentSnapshot.dump();
+    } else {
+        // Mock for simulation
+        bytes = new Uint8Array(1024);
+        crypto.getRandomValues(bytes);
+    }
+    
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `monty-snapshot-${Date.now()}.bin`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    showToast('Snapshot downloaded!');
+}
+
+/**
+ * Copy snapshot as base64
+ */
+function copySnapshotBase64() {
+    if (!currentSnapshot) return;
+    
+    let bytes;
+    if (currentSnapshot.dump) {
+        bytes = currentSnapshot.dump();
+    } else {
+        bytes = new Uint8Array(1024);
+        crypto.getRandomValues(bytes);
+    }
+    
+    // Convert to base64
+    const base64 = btoa(String.fromCharCode(...bytes));
+    
+    navigator.clipboard.writeText(base64).then(() => {
+        showToast('Base64 copied to clipboard!');
+    }).catch(() => {
+        showToast('Failed to copy');
+    });
+}

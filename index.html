@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=4">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -80,6 +80,9 @@
             <button class="btn btn-primary" onclick="runCode()" id="runBtn">
                 ▶ Run
             </button>
+            <button class="btn btn-ghost" onclick="runWithSnapshots()" id="stepBtn" title="Run with snapshot visualization">
+                ⏯ Step
+            </button>
         </div>
     </header>
 
@@ -121,6 +124,55 @@
         </div>
     </main>
 
+    <!-- Snapshot Modal -->
+    <div class="snapshot-modal" id="snapshotModal" style="display: none;">
+        <div class="snapshot-modal-content">
+            <div class="snapshot-header">
+                <h3>⏸️ Execution Paused</h3>
+                <button class="btn btn-ghost" onclick="cancelSnapshot()">✕</button>
+            </div>
+            
+            <div class="snapshot-body">
+                <!-- Function Call -->
+                <div class="snapshot-section">
+                    <div class="snapshot-label">External Function Call</div>
+                    <div class="snapshot-call">
+                        <code id="snapshotFnName">fetch</code>(<code id="snapshotArgs">"..."</code>)
+                    </div>
+                </div>
+                
+                <!-- State Info -->
+                <div class="snapshot-section">
+                    <div class="snapshot-label">Serialized State</div>
+                    <div class="snapshot-state">
+                        <span class="snapshot-bytes" id="snapshotSize">0</span> bytes
+                        <button class="btn btn-ghost btn-sm" onclick="downloadSnapshot()">💾 Download .bin</button>
+                        <button class="btn btn-ghost btn-sm" onclick="copySnapshotBase64()">📋 Copy Base64</button>
+                    </div>
+                </div>
+                
+                <!-- Timeline -->
+                <div class="snapshot-section">
+                    <div class="snapshot-label">Execution Timeline</div>
+                    <div class="snapshot-timeline" id="snapshotTimeline">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Return Value Input -->
+                <div class="snapshot-section">
+                    <div class="snapshot-label">Provide Return Value</div>
+                    <textarea id="snapshotReturn" class="snapshot-input" placeholder='{"data": [...]} or any JSON value'></textarea>
+                </div>
+            </div>
+            
+            <div class="snapshot-footer">
+                <button class="btn btn-ghost" onclick="resumeWithError()">⚠️ Raise Exception</button>
+                <button class="btn btn-primary" onclick="resumeExecution()">▶ Resume Execution</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Status Bar -->
     <footer class="status-bar">
         <div class="status-left">
@@ -142,6 +194,6 @@
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=4"></script>
+    <script src="js/app.js?v=5">
 </body>
 </html>
