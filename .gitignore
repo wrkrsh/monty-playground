@@ -2,3 +2,7 @@ node_modules/
 package-lock.json
 .DS_Store
 *.log
+dist/
+
+# WASM binary is large - get via npm install
+wasm/*.wasm

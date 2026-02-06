@@ -1,6 +1,10 @@
 /**
  * Monty Playground - Main Application
  * https://github.com/wrkrsh/monty-playground
+ * 
+ * Supports two execution modes:
+ * - WASM: Real Monty interpreter (requires SharedArrayBuffer)
+ * - Simulation: JavaScript-based fallback
  */
 
 // ============================================
@@ -222,7 +226,7 @@ print(f"  • Type hints: typed_fn(21) = {typed_fn(21)}")
 };
 
 // ============================================
-// MOCK EXTERNAL FUNCTIONS
+// EXTERNAL FUNCTIONS (mock implementations)
 // ============================================
 const EXTERNAL_FUNCTIONS = {
     fetch: (url) => `{"status":"ok","data":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]}`,
@@ -231,16 +235,65 @@ const EXTERNAL_FUNCTIONS = {
 };
 
 // ============================================
-// PYTHON INTERPRETER (Simulation)
+// EXECUTION MODE
+// ============================================
+let executionMode = 'simulation'; // 'wasm' or 'simulation'
+let MontyWasm = null;
+
+/**
+ * Check if WASM mode is available
+ */
+function checkWasmSupport() {
+    // Check for SharedArrayBuffer (required for WASM threads)
+    if (typeof SharedArrayBuffer === 'undefined') {
+        return { 
+            supported: false, 
+            reason: 'SharedArrayBuffer not available (requires COOP/COEP headers)' 
+        };
+    }
+    
+    // Check for WebAssembly
+    if (typeof WebAssembly === 'undefined') {
+        return { 
+            supported: false, 
+            reason: 'WebAssembly not supported in this browser' 
+        };
+    }
+    
+    return { supported: true };
+}
+
+/**
+ * Initialize WASM module if available
+ */
+async function initWasm() {
+    const support = checkWasmSupport();
+    if (!support.supported) {
+        console.log('WASM not available:', support.reason);
+        return false;
+    }
+    
+    try {
+        // Dynamic import of WASM module
+        MontyWasm = await import('../wasm/monty.wasi-browser.js');
+        executionMode = 'wasm';
+        console.log('WASM Monty loaded successfully');
+        return true;
+    } catch (error) {
+        console.log('WASM load failed:', error.message);
+        return false;
+    }
+}
+
+// ============================================
+// MONTY SIMULATOR (JavaScript fallback)
 // ============================================
 class MontySimulator {
     constructor() {
-        this.variables = {};
-        this.functions = {};
         this.output = [];
+        this.variables = {};
     }
     
-    // Iterative fibonacci helper
     fib(n) {
         if (n <= 1) return n;
         let a = 0, b = 1;
@@ -250,7 +303,6 @@ class MontySimulator {
         return b;
     }
     
-    // Handle fibonacci example specifically
     runFibonacciExample() {
         this.output.push({ type: 'stdout', text: 'Fibonacci sequence:' });
         for (let i = 0; i < 12; i++) {
@@ -259,7 +311,6 @@ class MontySimulator {
         return { output: this.output, result: this.fib(12) };
     }
     
-    // Handle async example specifically  
     runAsyncExample() {
         const items = ['apple', 'banana', 'cherry'];
         items.forEach(item => {
@@ -274,7 +325,7 @@ class MontySimulator {
         this.output = [];
         this.variables = {};
         
-        // Handle specific examples that need special treatment
+        // Handle specific examples
         if (code.includes('Fibonacci sequence') && code.includes('for i in range(12)')) {
             return this.runFibonacciExample();
         }
@@ -285,57 +336,39 @@ class MontySimulator {
         const lines = code.split('\n');
         let result = null;
         let inFunction = false;
-        let functionCode = [];
-        let functionName = '';
         let functionIndent = 0;
         
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+        for (const line of lines) {
             const trimmed = line.trim();
-            
-            // Skip empty lines and comments
             if (!trimmed || trimmed.startsWith('#')) continue;
             
-            // Track function definitions (simplified)
+            // Track function definitions
             if (trimmed.startsWith('def ') || trimmed.startsWith('async def ')) {
                 inFunction = true;
                 functionIndent = line.search(/\S/);
-                const match = trimmed.match(/(?:async\s+)?def\s+(\w+)/);
-                if (match) functionName = match[1];
-                functionCode = [line];
                 continue;
             }
             
             if (inFunction) {
                 const currentIndent = line.search(/\S/);
-                if (currentIndent > functionIndent || !trimmed) {
-                    functionCode.push(line);
-                    continue;
-                } else {
-                    inFunction = false;
-                    this.functions[functionName] = functionCode.join('\n');
-                }
+                if (currentIndent > functionIndent || !trimmed) continue;
+                inFunction = false;
             }
             
             // Handle print statements
             const printMatch = trimmed.match(/^print\s*\(\s*f?(['"])(.*)\1\s*\)$/);
             if (printMatch) {
                 let text = printMatch[2];
-                // Simple f-string interpolation
-                text = text.replace(/\{([^}]+)\}/g, (_, expr) => {
-                    return this.evalExpr(expr.trim());
-                });
-                // Handle escape sequences
+                text = text.replace(/\{([^}]+)\}/g, (_, expr) => this.evalExpr(expr.trim()));
                 text = text.replace(/\\n/g, '\n');
                 this.output.push({ type: 'stdout', text });
                 continue;
             }
             
-            // Handle simple assignments
+            // Handle assignments
             const assignMatch = trimmed.match(/^(\w+)\s*=\s*(.+)$/);
             if (assignMatch && !trimmed.includes('==')) {
-                const [, varName, value] = assignMatch;
-                this.variables[varName] = this.evalExpr(value);
+                this.variables[assignMatch[1]] = this.evalExpr(assignMatch[2]);
                 continue;
             }
             
@@ -343,13 +376,11 @@ class MontySimulator {
             for (const [fnName, fn] of Object.entries(EXTERNAL_FUNCTIONS)) {
                 const fnMatch = trimmed.match(new RegExp(`${fnName}\\s*\\(\\s*["']([^"']+)["']\\s*\\)`));
                 if (fnMatch) {
-                    const arg = fnMatch[1];
-                    const fnResult = fn(arg);
+                    const fnResult = fn(fnMatch[1]);
                     this.output.push({ 
                         type: 'external', 
-                        text: `📞 ${fnName}("${arg}")\n   → ${fnResult}` 
+                        text: `📞 ${fnName}("${fnMatch[1]}")\n   → ${fnResult}` 
                     });
-                    // Store result if assigned
                     const assignFnMatch = trimmed.match(/^(\w+)\s*=\s*/);
                     if (assignFnMatch) {
                         this.variables[assignFnMatch[1]] = fnResult;
@@ -357,48 +388,21 @@ class MontySimulator {
                 }
             }
             
-            // Handle for loops (simplified)
-            if (trimmed.startsWith('for ')) {
-                continue;
-            }
-            
-            // Handle await expressions
-            if (trimmed.startsWith('await ')) {
-                continue;
-            }
-            
             // Track last expression as result
-            if (!trimmed.includes('=') && 
-                !trimmed.startsWith('print') && 
-                !trimmed.startsWith('def ') &&
-                !trimmed.startsWith('async ') &&
-                !trimmed.startsWith('for ') &&
-                !trimmed.startsWith('if ') &&
-                !trimmed.startsWith('return ') &&
-                !trimmed.startsWith('import ') &&
-                !trimmed.startsWith('from ')) {
+            if (!trimmed.includes('=') && !trimmed.startsWith('print') && 
+                !trimmed.startsWith('def ') && !trimmed.startsWith('for ') &&
+                !trimmed.startsWith('if ') && !trimmed.startsWith('return ') &&
+                !trimmed.startsWith('import ') && !trimmed.startsWith('await ')) {
                 result = this.evalExpr(trimmed);
             }
         }
         
         // Check for unsupported features
         if (code.includes('class ') && !code.includes('# class')) {
-            this.output.push({ 
-                type: 'warning', 
-                text: '⚠️ Classes are not yet supported in Monty (coming soon!)' 
-            });
+            this.output.push({ type: 'warning', text: '⚠️ Classes not yet supported (coming soon!)' });
         }
-        if (code.match(/print\s*\(\s*\*/) || code.includes('*args') || code.includes('**kwargs')) {
-            this.output.push({ 
-                type: 'warning', 
-                text: '⚠️ *args/**kwargs unpacking is not yet supported' 
-            });
-        }
-        if (code.match(/^import\s+(?!asyncio)/m) && !code.includes('# import')) {
-            this.output.push({ 
-                type: 'warning', 
-                text: '⚠️ Most standard library imports are not supported' 
-            });
+        if (code.match(/print\s*\(\s*\*/) || code.includes('*args')) {
+            this.output.push({ type: 'warning', text: '⚠️ *args/**kwargs unpacking not supported' });
         }
         
         return { output: this.output, result };
@@ -407,79 +411,29 @@ class MontySimulator {
     evalExpr(expr) {
         expr = expr.trim();
         
-        // String literal
         if ((expr.startsWith('"') && expr.endsWith('"')) ||
             (expr.startsWith("'") && expr.endsWith("'"))) {
             return expr.slice(1, -1);
         }
         
-        // Number
-        if (/^-?\d+(\.\d+)?$/.test(expr)) {
-            return parseFloat(expr);
-        }
+        if (/^-?\d+(\.\d+)?$/.test(expr)) return parseFloat(expr);
+        if (this.variables.hasOwnProperty(expr)) return this.variables[expr];
         
-        // Variable lookup
-        if (this.variables.hasOwnProperty(expr)) {
-            return this.variables[expr];
-        }
-        
-        // Simple arithmetic
-        const arithMatch = expr.match(/^(\w+)\s*([\+\-\*\/])\s*(\w+)$/);
-        if (arithMatch) {
-            const [, a, op, b] = arithMatch;
-            const va = this.evalExpr(a);
-            const vb = this.evalExpr(b);
-            switch(op) {
-                case '+': return va + vb;
-                case '-': return va - vb;
-                case '*': return va * vb;
-                case '/': return va / vb;
-            }
-        }
-        
-        // Function call (simplified)
-        const fnCallMatch = expr.match(/^(\w+)\s*\(([^)]*)\)$/);
-        if (fnCallMatch) {
-            const [, fnName, args] = fnCallMatch;
-            if (fnName === 'len') {
+        const fnMatch = expr.match(/^(\w+)\s*\(([^)]*)\)$/);
+        if (fnMatch) {
+            const [, fn, args] = fnMatch;
+            if (fn === 'len') {
                 const arg = this.evalExpr(args);
-                if (typeof arg === 'string') return arg.length;
-                if (Array.isArray(arg)) return arg.length;
+                return Array.isArray(arg) ? arg.length : (arg?.length || 0);
             }
-            if (fnName === 'range') {
-                const n = parseInt(args);
-                return Array.from({length: n}, (_, i) => i);
-            }
-            if (fnName === 'fib') {
-                const n = parseInt(args);
-                // Iterative to avoid stack overflow
-                if (n <= 1) return n;
-                let a = 0, b = 1;
-                for (let i = 2; i <= n; i++) {
-                    [a, b] = [b, a + b];
-                }
-                return b;
-            }
-            if (fnName === 'add5') {
-                return parseInt(args) + 5;
-            }
-            if (fnName === 'typed_fn') {
-                return parseInt(args) * 2;
-            }
+            if (fn === 'range') return Array.from({length: parseInt(args)}, (_, i) => i);
+            if (fn === 'fib') return this.fib(parseInt(args));
+            if (fn === 'add5') return parseInt(args) + 5;
+            if (fn === 'typed_fn') return parseInt(args) * 2;
         }
         
-        // List literal
         if (expr.startsWith('[') && expr.endsWith(']')) {
-            try {
-                return JSON.parse(expr.replace(/'/g, '"'));
-            } catch {
-                return expr;
-            }
-        }
-        
-        // Dict literal  
-        if (expr.startsWith('{') && expr.endsWith('}')) {
-            return expr;
+            try { return JSON.parse(expr.replace(/'/g, '"')); } catch { return expr; }
         }
         
         return expr;
@@ -487,17 +441,88 @@ class MontySimulator {
 }
 
 // ============================================
+// MONTY WASM RUNNER
+// ============================================
+class MontyWasmRunner {
+    constructor() {
+        this.output = [];
+    }
+    
+    async run(code) {
+        this.output = [];
+        
+        if (!MontyWasm) {
+            throw new Error('WASM not initialized');
+        }
+        
+        try {
+            // Extract external function names from code
+            const externalFns = [];
+            for (const fnName of Object.keys(EXTERNAL_FUNCTIONS)) {
+                if (code.includes(fnName + '(')) {
+                    externalFns.push(fnName);
+                }
+            }
+            
+            // Create Monty instance
+            const result = MontyWasm.Monty.create(code, {
+                scriptName: 'main.py',
+                externalFunctions: externalFns,
+            });
+            
+            // Check for syntax errors
+            if (result instanceof MontyWasm.MontyException || 
+                result?.constructor?.name === 'MontyException') {
+                throw new Error(result.message || 'Syntax error');
+            }
+            if (result instanceof MontyWasm.MontyTypingError ||
+                result?.constructor?.name === 'MontyTypingError') {
+                throw new Error('Type error: ' + (result.displayDiagnostics?.('concise') || ''));
+            }
+            
+            const monty = result;
+            
+            // Run with external functions
+            const runResult = monty.run({
+                externalFunctions: EXTERNAL_FUNCTIONS,
+                limits: {
+                    maxDurationSecs: 5,
+                    maxRecursionDepth: 100,
+                },
+            });
+            
+            // Check for runtime errors
+            if (runResult instanceof MontyWasm.MontyException ||
+                runResult?.constructor?.name === 'MontyException') {
+                const err = new Error(runResult.message || 'Runtime error');
+                err.traceback = runResult.traceback?.();
+                throw err;
+            }
+            
+            return { output: this.output, result: runResult };
+        } catch (error) {
+            this.output.push({ type: 'error', text: error.message });
+            if (error.traceback) {
+                this.output.push({ type: 'error', text: error.traceback });
+            }
+            throw error;
+        }
+    }
+}
+
+// ============================================
 // GLOBALS
 // ============================================
 let editor;
-const monty = new MontySimulator();
+const simulator = new MontySimulator();
+const wasmRunner = new MontyWasmRunner();
 
 // ============================================
 // EDITOR SETUP
 // ============================================
 require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
 
-require(['vs/editor/editor.main'], function () {
+require(['vs/editor/editor.main'], async function () {
     // Custom theme
     monaco.editor.defineTheme('monty-dark', {
         base: 'vs-dark',
@@ -545,14 +570,40 @@ require(['vs/editor/editor.main'], function () {
     // Load from URL
     loadFromUrl();
     
+    // Try to initialize WASM
+    const wasmLoaded = await initWasm();
+    updateModeIndicator(wasmLoaded);
+    
     // Hide loading
     document.getElementById('loading').style.display = 'none';
 });
 
+/**
+ * Update the mode indicator in the status bar
+ */
+function updateModeIndicator(wasmAvailable) {
+    const statusRight = document.querySelector('.status-right');
+    if (!statusRight) return;
+    
+    const modeSpan = document.createElement('span');
+    modeSpan.id = 'modeIndicator';
+    modeSpan.style.marginRight = '8px';
+    
+    if (wasmAvailable) {
+        modeSpan.innerHTML = '<span style="color: var(--success);">● WASM</span>';
+        modeSpan.title = 'Running real Monty WASM interpreter';
+    } else {
+        modeSpan.innerHTML = '<span style="color: var(--warning);">● Simulation</span>';
+        modeSpan.title = 'Running JavaScript simulation (WASM requires COOP/COEP headers)';
+    }
+    
+    statusRight.insertBefore(modeSpan, statusRight.firstChild);
+}
+
 // ============================================
 // EXECUTION
 // ============================================
-function runCode() {
+async function runCode() {
     const code = editor.getValue();
     clearOutput();
     
@@ -561,33 +612,51 @@ function runCode() {
     
     const startTime = performance.now();
     
-    // Simulate async execution
-    setTimeout(() => {
-        try {
-            const { output, result } = monty.run(code);
-            
-            // Display output
-            output.forEach(item => {
-                appendOutput(item.type, item.text);
-            });
-            
-            // Display result
-            if (result !== null && result !== undefined) {
-                appendOutput('result', `→ ${JSON.stringify(result)}`);
-            }
-            
-            const elapsed = (performance.now() - startTime).toFixed(1);
-            document.getElementById('execTime').style.display = 'flex';
-            document.getElementById('execTimeValue').textContent = elapsed;
-            
-            setStatus('ready', 'Done');
-        } catch (error) {
-            appendOutput('error', `Error: ${error.message}`);
-            setStatus('error', 'Error');
+    try {
+        let output, result;
+        
+        if (executionMode === 'wasm') {
+            const wasmResult = await wasmRunner.run(code);
+            output = wasmResult.output;
+            result = wasmResult.result;
+        } else {
+            const simResult = simulator.run(code);
+            output = simResult.output;
+            result = simResult.result;
         }
         
-        document.getElementById('runBtn').disabled = false;
-    }, 50);
+        // Display output
+        output.forEach(item => {
+            appendOutput(item.type, item.text);
+        });
+        
+        // Display result
+        if (result !== null && result !== undefined) {
+            appendOutput('result', `→ ${formatValue(result)}`);
+        }
+        
+        const elapsed = (performance.now() - startTime).toFixed(1);
+        document.getElementById('execTime').style.display = 'flex';
+        document.getElementById('execTimeValue').textContent = elapsed;
+        
+        setStatus('ready', 'Done');
+    } catch (error) {
+        appendOutput('error', `Error: ${error.message}`);
+        if (error.traceback) {
+            appendOutput('error', error.traceback);
+        }
+        setStatus('error', 'Error');
+    }
+    
+    document.getElementById('runBtn').disabled = false;
+}
+
+function formatValue(value) {
+    if (value === null) return 'None';
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'string') return `"${value}"`;
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
 }
 
 // ============================================
@@ -625,7 +694,6 @@ function loadExample(name) {
         editor.setValue(EXAMPLES[name]);
         clearOutput();
     }
-    // Keep selected value visible (don't reset to placeholder)
 }
 
 function shareCode() {
