@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=8">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -96,8 +96,11 @@
     <main class="main">
         <!-- Editor Panel -->
         <div class="panel editor-panel">
+            <div class="tab-bar" id="tabBar">
+                <!-- Tabs populated dynamically -->
+            </div>
             <div class="panel-header">
-                <span>main.py</span>
+                <span id="currentFileName">main.py</span>
                 <span>Ctrl+Enter to run</span>
             </div>
             <div class="panel-content">
@@ -337,6 +340,6 @@ return summary</code></pre>
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=8">
+    <script src="js/app.js?v=9">
 </body>
 </html>

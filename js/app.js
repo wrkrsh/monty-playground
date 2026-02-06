@@ -643,6 +643,9 @@ require(['vs/editor/editor.main'], async function () {
     // Initialize external functions UI
     initExternalFunctionsUI();
     
+    // Initialize tabs
+    initTabs();
+    
     // Hide loading
     document.getElementById('loading').style.display = 'none';
 });
@@ -760,7 +763,11 @@ function setStatus(state, text) {
 // ============================================
 function loadExample(name) {
     if (EXAMPLES[name]) {
-        editor.setValue(EXAMPLES[name]);
+        // Load into current file
+        if (editor) {
+            editor.setValue(EXAMPLES[name]);
+            files[currentFile] = EXAMPLES[name];
+        }
         clearOutput();
     }
 }
@@ -1894,4 +1901,150 @@ async function playAgentDemo() {
  */
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ============================================
+// MULTI-FILE SUPPORT
+// ============================================
+let files = {
+    'main.py': EXAMPLES.hello,
+};
+let currentFile = 'main.py';
+
+/**
+ * Initialize tab bar
+ */
+function initTabs() {
+    renderTabs();
+}
+
+/**
+ * Render tab bar
+ */
+function renderTabs() {
+    const tabBar = document.getElementById('tabBar');
+    if (!tabBar) return;
+    
+    let html = '';
+    
+    for (const filename of Object.keys(files)) {
+        const isActive = filename === currentFile;
+        const canClose = Object.keys(files).length > 1;
+        
+        html += `
+            <div class="tab ${isActive ? 'active' : ''}" onclick="switchTab('${filename}')">
+                <span>${filename}</span>
+                ${canClose ? `<span class="tab-close" onclick="closeTab('${filename}', event)">×</span>` : ''}
+            </div>
+        `;
+    }
+    
+    html += `<button class="tab-add" onclick="addNewFile()" title="Add new file">+</button>`;
+    
+    tabBar.innerHTML = html;
+    
+    // Update filename in panel header
+    const fileNameEl = document.getElementById('currentFileName');
+    if (fileNameEl) {
+        fileNameEl.textContent = currentFile;
+    }
+}
+
+/**
+ * Switch to a different tab
+ */
+function switchTab(filename) {
+    if (!files[filename]) return;
+    
+    // Save current file content
+    if (editor && currentFile) {
+        files[currentFile] = editor.getValue();
+    }
+    
+    // Switch to new file
+    currentFile = filename;
+    
+    if (editor) {
+        editor.setValue(files[filename]);
+    }
+    
+    renderTabs();
+    clearOutput();
+}
+
+/**
+ * Add a new file
+ */
+function addNewFile() {
+    const name = prompt('File name:', 'utils.py');
+    if (!name) return;
+    
+    // Validate filename
+    if (!name.endsWith('.py')) {
+        showToast('File must end with .py');
+        return;
+    }
+    
+    if (files[name]) {
+        showToast('File already exists');
+        return;
+    }
+    
+    // Create new file with template
+    files[name] = `# ${name}\n# Add your code here\n\n`;
+    
+    // Switch to new file
+    switchTab(name);
+    
+    showToast(`Created ${name}`);
+}
+
+/**
+ * Close a tab
+ */
+function closeTab(filename, event) {
+    event.stopPropagation();
+    
+    if (Object.keys(files).length <= 1) {
+        showToast('Cannot close last file');
+        return;
+    }
+    
+    if (!confirm(`Close ${filename}?`)) return;
+    
+    // If closing current file, switch to another
+    if (filename === currentFile) {
+        const remaining = Object.keys(files).filter(f => f !== filename);
+        switchTab(remaining[0]);
+    }
+    
+    delete files[filename];
+    renderTabs();
+    
+    showToast(`Closed ${filename}`);
+}
+
+/**
+ * Get all files content (for future multi-file execution)
+ */
+function getAllFiles() {
+    // Save current editor content
+    if (editor && currentFile) {
+        files[currentFile] = editor.getValue();
+    }
+    return { ...files };
+}
+
+/**
+ * Load files from object
+ */
+function loadFiles(newFiles) {
+    files = { ...newFiles };
+    currentFile = Object.keys(files)[0] || 'main.py';
+    
+    if (editor) {
+        editor.setValue(files[currentFile] || '');
+    }
+    
+    renderTabs();
 }

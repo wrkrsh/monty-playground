@@ -205,6 +205,84 @@ select option {
     border-right: none;
 }
 
+/* ============================================
+   Tab Bar
+   ============================================ */
+
+.tab-bar {
+    display: flex;
+    align-items: center;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.tab:hover {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.tab.active {
+    background: var(--surface);
+    color: var(--text);
+    border-bottom: 2px solid var(--primary);
+    margin-bottom: -1px;
+}
+
+.tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    opacity: 0.5;
+    transition: all 0.15s;
+}
+
+.tab-close:hover {
+    opacity: 1;
+    background: var(--error);
+    color: #fff;
+}
+
+.tab-add {
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.tab-add:hover {
+    color: var(--primary);
+    background: var(--surface);
+}
+
 .panel-header {
     display: flex;
     align-items: center;
