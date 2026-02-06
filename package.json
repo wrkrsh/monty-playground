@@ -1,19 +1,13 @@
 {
   "name": "monty-playground",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Try pydantic-monty in your browser - interactive Python playground",
+  "homepage": "https://wrkrsh.github.io/monty-playground/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wrkrsh/monty-playground"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@pydantic/monty": "^0.0.3"
-  },
-  "devDependencies": {
-    "esbuild": "^0.27.3"
-  }
+  "keywords": ["monty", "pydantic", "python", "playground", "wasm", "interpreter"],
+  "author": "wrkr <hello@wrkr.sh>",
+  "license": "MIT"
 }
