@@ -625,7 +625,7 @@ function loadExample(name) {
         editor.setValue(EXAMPLES[name]);
         clearOutput();
     }
-    document.getElementById('examples').value = '';
+    // Keep selected value visible (don't reset to placeholder)
 }
 
 function shareCode() {
