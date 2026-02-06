@@ -574,6 +574,9 @@ require(['vs/editor/editor.main'], async function () {
     const wasmLoaded = await initWasm();
     updateModeIndicator(wasmLoaded);
     
+    // Setup type check listener
+    setupTypeCheckListener();
+    
     // Hide loading
     document.getElementById('loading').style.display = 'none';
 });
@@ -727,4 +730,283 @@ function showToast(message) {
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
+}
+
+// ============================================
+// TYPE CHECKER
+// ============================================
+let typeCheckEnabled = false;
+let typeCheckDebounce = null;
+let currentTypeDecorations = [];
+
+/**
+ * Toggle type checking on/off
+ */
+function toggleTypeCheck() {
+    typeCheckEnabled = document.getElementById('typeCheckToggle').checked;
+    const typePanel = document.getElementById('typePanel');
+    
+    if (typeCheckEnabled) {
+        typePanel.style.display = 'flex';
+        runTypeCheck();
+    } else {
+        typePanel.style.display = 'none';
+        clearTypeErrors();
+    }
+}
+
+/**
+ * Run type checking on current code
+ */
+async function runTypeCheck() {
+    if (!typeCheckEnabled || !editor) return;
+    
+    // Debounce to avoid checking on every keystroke
+    clearTimeout(typeCheckDebounce);
+    typeCheckDebounce = setTimeout(async () => {
+        const code = editor.getValue();
+        const statusEl = document.getElementById('typeStatus');
+        const errorsEl = document.getElementById('typeErrors');
+        
+        statusEl.textContent = 'checking...';
+        statusEl.className = 'type-status checking';
+        
+        try {
+            if (executionMode === 'wasm' && MontyWasm) {
+                // Real type checking with WASM
+                const result = MontyWasm.Monty.create(code, {
+                    scriptName: 'main.py',
+                    typeCheck: true,
+                });
+                
+                if (result instanceof MontyWasm.MontyTypingError ||
+                    result?.constructor?.name === 'MontyTypingError') {
+                    // Has type errors
+                    const diagnostics = result.displayDiagnostics?.('concise') || 'Type error';
+                    showTypeErrors(diagnostics);
+                } else if (result instanceof MontyWasm.MontyException ||
+                           result?.constructor?.name === 'MontyException') {
+                    // Syntax error - show differently
+                    showTypeErrors(`SyntaxError: ${result.message || 'Invalid syntax'}`);
+                } else {
+                    // No type errors
+                    showTypeOk();
+                }
+            } else {
+                // Simulation mode - basic type checking
+                const errors = simulateTypeCheck(code);
+                if (errors.length > 0) {
+                    showTypeErrorsList(errors);
+                } else {
+                    showTypeOk();
+                }
+            }
+        } catch (error) {
+            statusEl.textContent = 'error';
+            statusEl.className = 'type-status error';
+            errorsEl.innerHTML = `<div class="type-error-item"><span class="type-error-msg">${error.message}</span></div>`;
+        }
+    }, 300);
+}
+
+/**
+ * Basic type checking simulation for non-WASM mode
+ */
+function simulateTypeCheck(code) {
+    const errors = [];
+    const lines = code.split('\n');
+    
+    // Track function signatures
+    const functions = {};
+    
+    lines.forEach((line, idx) => {
+        const lineNum = idx + 1;
+        const trimmed = line.trim();
+        
+        // Parse function definitions with type hints
+        const fnMatch = trimmed.match(/^def\s+(\w+)\s*\(([^)]*)\)\s*(?:->\s*(\w+))?:/);
+        if (fnMatch) {
+            const [, name, params, returnType] = fnMatch;
+            const paramList = params.split(',').map(p => {
+                const [pname, ptype] = p.split(':').map(s => s.trim());
+                return { name: pname, type: ptype };
+            }).filter(p => p.name);
+            functions[name] = { params: paramList, returnType: returnType || 'Any', line: lineNum };
+        }
+        
+        // Check for obvious type mismatches in function calls
+        for (const [fnName, fnInfo] of Object.entries(functions)) {
+            const callMatch = trimmed.match(new RegExp(`${fnName}\\s*\\(([^)]*)\\)`));
+            if (callMatch && fnInfo.params.length > 0) {
+                const args = callMatch[1].split(',').map(a => a.trim()).filter(a => a);
+                
+                fnInfo.params.forEach((param, i) => {
+                    if (args[i] && param.type) {
+                        const arg = args[i];
+                        // Simple type inference
+                        if (param.type === 'int' && /^["']/.test(arg)) {
+                            errors.push({
+                                line: lineNum,
+                                column: 1,
+                                message: `Argument ${i + 1} to "${fnName}" has incompatible type "str"; expected "int"`,
+                            });
+                        }
+                        if (param.type === 'str' && /^\d+$/.test(arg)) {
+                            errors.push({
+                                line: lineNum,
+                                column: 1,
+                                message: `Argument ${i + 1} to "${fnName}" has incompatible type "int"; expected "str"`,
+                            });
+                        }
+                    }
+                });
+            }
+        }
+    });
+    
+    return errors;
+}
+
+/**
+ * Display type errors from WASM diagnostics string
+ */
+function showTypeErrors(diagnostics) {
+    const statusEl = document.getElementById('typeStatus');
+    const errorsEl = document.getElementById('typeErrors');
+    
+    statusEl.textContent = 'errors found';
+    statusEl.className = 'type-status error';
+    
+    // Parse diagnostics into structured errors
+    const errors = [];
+    const lines = diagnostics.split('\n');
+    
+    let currentError = null;
+    for (const line of lines) {
+        const match = line.match(/^main\.py:(\d+):(\d+):\s*(.+)/);
+        if (match) {
+            if (currentError) errors.push(currentError);
+            currentError = {
+                line: parseInt(match[1]),
+                column: parseInt(match[2]),
+                message: match[3],
+            };
+        } else if (currentError && line.trim()) {
+            currentError.message += '\n' + line.trim();
+        }
+    }
+    if (currentError) errors.push(currentError);
+    
+    // If no structured errors found, show raw
+    if (errors.length === 0) {
+        errorsEl.innerHTML = `<div class="type-error-item"><span class="type-error-msg">${escapeHtml(diagnostics)}</span></div>`;
+    } else {
+        showTypeErrorsList(errors);
+    }
+    
+    // Add Monaco markers
+    addMonacoMarkers(errors);
+}
+
+/**
+ * Display list of type errors
+ */
+function showTypeErrorsList(errors) {
+    const statusEl = document.getElementById('typeStatus');
+    const errorsEl = document.getElementById('typeErrors');
+    
+    statusEl.textContent = `${errors.length} error${errors.length > 1 ? 's' : ''}`;
+    statusEl.className = 'type-status error';
+    
+    errorsEl.innerHTML = errors.map(err => `
+        <div class="type-error-item" onclick="goToLine(${err.line}, ${err.column || 1})">
+            <div class="type-error-line">Line ${err.line}${err.column ? `:${err.column}` : ''}</div>
+            <div class="type-error-msg">${escapeHtml(err.message)}</div>
+        </div>
+    `).join('');
+    
+    addMonacoMarkers(errors);
+}
+
+/**
+ * Show success state
+ */
+function showTypeOk() {
+    const statusEl = document.getElementById('typeStatus');
+    const errorsEl = document.getElementById('typeErrors');
+    
+    statusEl.textContent = 'no errors';
+    statusEl.className = 'type-status ok';
+    errorsEl.innerHTML = '<div class="type-ok">✓ No type errors</div>';
+    
+    clearMonacoMarkers();
+}
+
+/**
+ * Clear type errors
+ */
+function clearTypeErrors() {
+    const errorsEl = document.getElementById('typeErrors');
+    if (errorsEl) {
+        errorsEl.innerHTML = '<div class="type-ok">✓ No type errors</div>';
+    }
+    clearMonacoMarkers();
+}
+
+/**
+ * Add error markers to Monaco editor
+ */
+function addMonacoMarkers(errors) {
+    if (!editor) return;
+    
+    const markers = errors.map(err => ({
+        startLineNumber: err.line,
+        startColumn: err.column || 1,
+        endLineNumber: err.line,
+        endColumn: 1000, // End of line
+        message: err.message,
+        severity: monaco.MarkerSeverity.Error,
+    }));
+    
+    monaco.editor.setModelMarkers(editor.getModel(), 'monty-types', markers);
+}
+
+/**
+ * Clear Monaco markers
+ */
+function clearMonacoMarkers() {
+    if (editor) {
+        monaco.editor.setModelMarkers(editor.getModel(), 'monty-types', []);
+    }
+}
+
+/**
+ * Navigate to line in editor
+ */
+function goToLine(line, column = 1) {
+    if (editor) {
+        editor.setPosition({ lineNumber: line, column: column });
+        editor.revealLineInCenter(line);
+        editor.focus();
+    }
+}
+
+/**
+ * Escape HTML for safe display
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Hook into editor changes for live type checking
+function setupTypeCheckListener() {
+    if (editor) {
+        editor.onDidChangeModelContent(() => {
+            if (typeCheckEnabled) {
+                runTypeCheck();
+            }
+        });
+    }
 }

@@ -398,6 +398,150 @@ select option {
 }
 
 /* ============================================
+   Toggle Switch
+   ============================================ */
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-label input {
+    display: none;
+}
+
+.toggle-slider {
+    width: 32px;
+    height: 18px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: all 0.2s;
+}
+
+.toggle-label input:checked + .toggle-slider {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+    background: #000;
+    transform: translateX(14px);
+}
+
+.toggle-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.toggle-label input:checked ~ .toggle-text {
+    color: var(--primary);
+}
+
+/* ============================================
+   Type Checker Panel
+   ============================================ */
+
+.output-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.output-panel .panel-content {
+    flex: 1;
+}
+
+.type-panel {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    max-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.type-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.type-status {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.type-status.checking {
+    color: var(--warning);
+}
+
+.type-status.ok {
+    color: var(--success);
+}
+
+.type-status.error {
+    color: var(--error);
+}
+
+.type-panel-content {
+    flex: 1;
+    overflow: auto;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+}
+
+.type-ok {
+    color: var(--success);
+    padding: 8px;
+}
+
+.type-error-item {
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid var(--error);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.type-error-item:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.type-error-line {
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+
+.type-error-msg {
+    color: var(--error);
+}
+
+/* ============================================
    Responsive
    ============================================ */
 

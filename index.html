@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=3">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -63,6 +63,11 @@
             </select>
         </div>
         <div class="header-right">
+            <label class="toggle-label" title="Enable live type checking">
+                <input type="checkbox" id="typeCheckToggle" onchange="toggleTypeCheck()">
+                <span class="toggle-slider"></span>
+                <span class="toggle-text">Types</span>
+            </label>
             <button class="btn btn-ghost" onclick="shareCode()" title="Copy shareable link">
                 📤 Share
             </button>
@@ -92,7 +97,7 @@
         </div>
         
         <!-- Output Panel -->
-        <div class="panel">
+        <div class="panel output-panel">
             <div class="panel-header">
                 <span>Output</span>
                 <button class="btn btn-ghost" onclick="clearOutput()" style="padding: 2px 8px; font-size: 11px;">Clear</button>
@@ -100,6 +105,17 @@
             <div class="panel-content">
                 <div class="output" id="output">
                     <div class="output-info">Click Run or press Ctrl+Enter</div>
+                </div>
+            </div>
+            
+            <!-- Type Checker Panel (hidden by default) -->
+            <div class="type-panel" id="typePanel" style="display: none;">
+                <div class="type-panel-header">
+                    <span>🔍 Type Checker</span>
+                    <span class="type-status" id="typeStatus">checking...</span>
+                </div>
+                <div class="type-panel-content" id="typeErrors">
+                    <div class="type-ok">✓ No type errors</div>
                 </div>
             </div>
         </div>
@@ -126,6 +142,6 @@
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=3"></script>
+    <script src="js/app.js?v=4"></script>
 </body>
 </html>
