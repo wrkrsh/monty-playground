@@ -1,5 +1,7 @@
 # Monty Playground 🐍
 
+**[Try it live →](https://monty-playground.pages.dev/)**
+
 Interactive playground for [pydantic-monty](https://github.com/pydantic/monty) - a minimal, secure Python interpreter written in Rust for AI agents.
 
 ## Features
