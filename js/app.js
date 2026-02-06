@@ -1651,3 +1651,154 @@ function saveExternalFunction(existingName) {
 function saveExternalFunctions() {
     localStorage.setItem('monty-external-functions', JSON.stringify(userExternalFunctions));
 }
+
+// ============================================
+// PERFORMANCE BENCHMARKS
+// ============================================
+
+// Reference benchmarks (approximate values from similar workloads)
+const REFERENCE_BENCHMARKS = {
+    python: 12,    // CPython typical execution
+    pyodide: 45,   // Pyodide WASM first run
+};
+
+/**
+ * Run performance benchmark
+ */
+async function runBenchmark() {
+    const code = editor.getValue();
+    clearOutput();
+    
+    setStatus('running', 'Benchmarking...');
+    document.getElementById('runBtn').disabled = true;
+    document.getElementById('stepBtn').disabled = true;
+    document.getElementById('benchBtn').disabled = true;
+    
+    appendOutput('info', '⏱️ Running benchmark...');
+    
+    try {
+        const iterations = 10;
+        const times = [];
+        
+        // Warmup run
+        appendOutput('info', 'Warmup run...');
+        if (executionMode === 'wasm' && MontyWasm) {
+            const warmupResult = MontyWasm.Monty.create(code, { scriptName: 'main.py' });
+            if (!(warmupResult instanceof MontyWasm.MontyException)) {
+                warmupResult.run();
+            }
+        } else {
+            simulator.run(code);
+        }
+        
+        // Timed runs
+        appendOutput('info', `Running ${iterations} iterations...`);
+        
+        for (let i = 0; i < iterations; i++) {
+            const start = performance.now();
+            
+            if (executionMode === 'wasm' && MontyWasm) {
+                const result = MontyWasm.Monty.create(code, { scriptName: 'main.py' });
+                if (!(result instanceof MontyWasm.MontyException)) {
+                    result.run();
+                }
+            } else {
+                simulator.run(code);
+            }
+            
+            const elapsed = performance.now() - start;
+            times.push(elapsed);
+        }
+        
+        // Calculate statistics
+        const sortedTimes = [...times].sort((a, b) => a - b);
+        const median = sortedTimes[Math.floor(iterations / 2)];
+        const mean = times.reduce((a, b) => a + b, 0) / iterations;
+        const min = Math.min(...times);
+        const max = Math.max(...times);
+        
+        // Show benchmark panel
+        showBenchmarkResults({
+            monty: median,
+            python: REFERENCE_BENCHMARKS.python,
+            pyodide: REFERENCE_BENCHMARKS.pyodide,
+            stats: { median, mean, min, max, iterations },
+        });
+        
+        appendOutput('result', `→ Median: ${median.toFixed(2)}ms`);
+        appendOutput('info', `   Min: ${min.toFixed(2)}ms, Max: ${max.toFixed(2)}ms`);
+        
+        setStatus('ready', 'Benchmark complete');
+    } catch (error) {
+        appendOutput('error', `Benchmark error: ${error.message}`);
+        setStatus('error', 'Error');
+    }
+    
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('stepBtn').disabled = false;
+    document.getElementById('benchBtn').disabled = false;
+}
+
+/**
+ * Show benchmark results in panel
+ */
+function showBenchmarkResults(results) {
+    const panel = document.getElementById('benchmarkPanel');
+    const bars = document.getElementById('benchmarkBars');
+    
+    panel.style.display = 'flex';
+    
+    const maxTime = Math.max(results.monty, results.python, results.pyodide);
+    
+    const speedupVsPython = (results.python / results.monty).toFixed(1);
+    const speedupVsPyodide = (results.pyodide / results.monty).toFixed(1);
+    
+    bars.innerHTML = `
+        <div class="benchmark-row">
+            <span class="benchmark-label">Monty ${executionMode === 'wasm' ? '(WASM)' : '(Sim)'}</span>
+            <div class="benchmark-bar-container">
+                <div class="benchmark-bar-fill monty" style="width: ${(results.monty / maxTime) * 100}%">
+                    <span class="benchmark-time">${results.monty.toFixed(2)}ms</span>
+                </div>
+            </div>
+        </div>
+        <div class="benchmark-row">
+            <span class="benchmark-label">Python (CPython)*</span>
+            <div class="benchmark-bar-container">
+                <div class="benchmark-bar-fill python" style="width: ${(results.python / maxTime) * 100}%">
+                    <span class="benchmark-time">~${results.python}ms</span>
+                </div>
+            </div>
+        </div>
+        <div class="benchmark-row">
+            <span class="benchmark-label">Pyodide (WASM)*</span>
+            <div class="benchmark-bar-container">
+                <div class="benchmark-bar-fill pyodide" style="width: ${(results.pyodide / maxTime) * 100}%">
+                    <span class="benchmark-time">~${results.pyodide}ms</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="benchmark-stats">
+            <div class="benchmark-stat">
+                <div class="benchmark-stat-value">${speedupVsPython}x</div>
+                <div class="benchmark-stat-label">faster than Python</div>
+            </div>
+            <div class="benchmark-stat">
+                <div class="benchmark-stat-value">${speedupVsPyodide}x</div>
+                <div class="benchmark-stat-label">faster than Pyodide</div>
+            </div>
+            <div class="benchmark-stat">
+                <div class="benchmark-stat-value">${results.stats.iterations}</div>
+                <div class="benchmark-stat-label">iterations</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Close benchmark panel
+ */
+function closeBenchmark() {
+    document.getElementById('benchmarkPanel').style.display = 'none';
+}

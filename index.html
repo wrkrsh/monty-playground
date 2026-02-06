@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=6">
     
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -83,6 +83,9 @@
             <button class="btn btn-ghost" onclick="runWithSnapshots()" id="stepBtn" title="Run with snapshot visualization">
                 ⏯ Step
             </button>
+            <button class="btn btn-ghost" onclick="runBenchmark()" id="benchBtn" title="Run performance benchmark">
+                ⏱️ Bench
+            </button>
         </div>
     </header>
 
@@ -124,6 +127,22 @@
             <div class="panel-content">
                 <div class="output" id="output">
                     <div class="output-info">Click Run or press Ctrl+Enter</div>
+                </div>
+            </div>
+            
+            <!-- Benchmark Panel (hidden by default) -->
+            <div class="benchmark-panel" id="benchmarkPanel" style="display: none;">
+                <div class="benchmark-header">
+                    <span>⚡ Performance Benchmark</span>
+                    <button class="btn btn-ghost btn-sm" onclick="closeBenchmark()">✕</button>
+                </div>
+                <div class="benchmark-content">
+                    <div class="benchmark-bars" id="benchmarkBars">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <div class="benchmark-info">
+                        <small>* Reference values from typical workloads. Actual performance varies by code complexity.</small>
+                    </div>
                 </div>
             </div>
             
@@ -210,6 +229,6 @@
     </footer>
 
     <!-- App Script -->
-    <script src="js/app.js?v=6">
+    <script src="js/app.js?v=7">
 </body>
 </html>

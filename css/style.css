@@ -468,6 +468,120 @@ select option {
     flex: 1;
 }
 
+/* ============================================
+   Benchmark Panel
+   ============================================ */
+
+.benchmark-panel {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+}
+
+.benchmark-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.benchmark-content {
+    padding: 12px;
+}
+
+.benchmark-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.benchmark-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.benchmark-label {
+    width: 120px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.benchmark-bar-container {
+    flex: 1;
+    height: 24px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.benchmark-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+}
+
+.benchmark-bar-fill.monty {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
+}
+
+.benchmark-bar-fill.python {
+    background: linear-gradient(90deg, #3776ab 0%, #4b8bbe 100%);
+}
+
+.benchmark-bar-fill.pyodide {
+    background: linear-gradient(90deg, #f0db4f 0%, #f5e050 100%);
+}
+
+.benchmark-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: #000;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.benchmark-info {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.benchmark-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.benchmark-stat {
+    text-align: center;
+}
+
+.benchmark-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.benchmark-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
 .type-panel {
     border-top: 1px solid var(--border);
     background: var(--surface);
